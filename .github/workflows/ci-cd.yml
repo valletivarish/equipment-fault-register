@@ -1,0 +1,325 @@
+# One pipeline for the whole application.
+# CI (every push and pull request): backend tests, frontend build, static and
+# security analysis, Terraform validation and browser end-to-end tests.
+# CD (push to main only, after every CI job passes): Terraform apply, release
+# upload to S3, install on EC2 through SSM and a smoke test on the public URL.
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+  TERRAFORM_VERSION: "1.15.8"
+  AWS_REGION: us-east-1
+  SUMMARY: python3 scripts/ci/scan_summary.py
+
+jobs:
+  backend-tests:
+    name: "CI: backend lint and tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: faults
+          POSTGRES_PASSWORD: faults
+          POSTGRES_DB: faults
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U faults" --health-interval 2s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://faults:faults@localhost:5432/faults
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: pip install -r code/requirements-dev.txt
+      - name: Static analysis (Ruff)
+        working-directory: code
+        run: |
+          ruff check . --output-format=json > ../ruff.json || true
+          ruff check . --output-format=concise || true
+          cd .. && $SUMMARY ruff ruff.json "$(ruff --version | cut -d' ' -f2)"
+      - name: Migrations apply cleanly
+        if: ${{ !cancelled() }}
+        working-directory: code
+        run: alembic upgrade head && alembic downgrade base
+      - name: API tests (pytest)
+        if: ${{ !cancelled() }}
+        working-directory: code
+        run: |
+          pytest -v --junitxml=../pytest.xml || true
+          cd .. && $SUMMARY pytest pytest.xml "$(pytest --version | cut -d' ' -f2)"
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: backend-reports
+          path: |
+            ruff.json
+            pytest.xml
+
+  frontend-build:
+    name: "CI: frontend lint and build"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install dependencies
+        working-directory: code
+        run: npm ci
+      - name: Static analysis (ESLint)
+        working-directory: code
+        run: |
+          npx eslint . -f json -o ../eslint.json || true
+          npx eslint . || true
+          cd .. && $SUMMARY eslint eslint.json "$(cd code && npx eslint --version)"
+      - name: Production build
+        working-directory: code
+        run: npm run build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: .artifacts/dist
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: frontend-reports
+          path: eslint.json
+
+  security-scan:
+    name: "CI: security analysis"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+      TRIVY_VERSION: "0.76.1"
+      SEMGREP_VERSION: "1.182.1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # gitleaks scans the whole history, not only the last commit
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install scanners
+        # Binaries are downloaded from their official releases and checked
+        # against the published checksums before use.
+        run: |
+          pip install bandit==1.9.4 pip-audit==2.10.1 semgrep==$SEMGREP_VERSION
+          cd /tmp
+          base=https://github.com/gitleaks/gitleaks/releases/download/v$GITLEAKS_VERSION
+          curl -fsSLO $base/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz
+          curl -fsSLO $base/gitleaks_${GITLEAKS_VERSION}_checksums.txt
+          sha256sum --check --ignore-missing gitleaks_${GITLEAKS_VERSION}_checksums.txt
+          tar -xzf gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz gitleaks
+          base=https://github.com/aquasecurity/trivy/releases/download/v$TRIVY_VERSION
+          curl -fsSLO $base/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
+          curl -fsSLO $base/trivy_${TRIVY_VERSION}_checksums.txt
+          sha256sum --check --ignore-missing trivy_${TRIVY_VERSION}_checksums.txt
+          tar -xzf trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz trivy
+          sudo mv gitleaks trivy /usr/local/bin/
+      - name: Python code security (Bandit)
+        if: ${{ !cancelled() }}
+        run: |
+          bandit -r code/app -f json -o bandit.json || true
+          bandit -r code/app -f screen || true
+          $SUMMARY bandit bandit.json "1.9.4"
+      - name: Python dependencies (pip-audit)
+        if: ${{ !cancelled() }}
+        run: |
+          pip-audit -r code/requirements.txt -f json -o pip-audit.json || true
+          pip-audit -r code/requirements.txt || true
+          $SUMMARY pip-audit pip-audit.json "2.10.1"
+      - name: npm dependencies (npm audit)
+        if: ${{ !cancelled() }}
+        run: |
+          (cd code && npm audit --package-lock-only --json > ../npm-audit.json) || true
+          (cd code && npm audit --package-lock-only) || true
+          $SUMMARY npm-audit npm-audit.json "$(npm --version)"
+      - name: Code security patterns (Semgrep)
+        if: ${{ !cancelled() }}
+        run: |
+          semgrep scan --metrics=off --config p/default --json -o semgrep.json code scripts || true
+          semgrep scan --metrics=off --config p/default code scripts || true
+          $SUMMARY semgrep semgrep.json "$SEMGREP_VERSION"
+      - name: Infrastructure misconfiguration (Trivy)
+        if: ${{ !cancelled() }}
+        run: |
+          trivy config --quiet -f json -o trivy.json infra/terraform || true
+          trivy config --quiet infra/terraform || true
+          $SUMMARY trivy trivy.json "$TRIVY_VERSION"
+      - name: Committed secrets (Gitleaks)
+        if: ${{ !cancelled() }}
+        run: |
+          gitleaks git --no-banner --report-format json --report-path gitleaks.json . || true
+          $SUMMARY gitleaks gitleaks.json "$GITLEAKS_VERSION"
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: security-reports
+          path: "*.json"
+
+  terraform-validate:
+    name: "CI: Terraform validate"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: Format and validate
+        working-directory: infra/terraform
+        run: |
+          terraform fmt -check -recursive
+          terraform init -backend=false -input=false
+          terraform validate
+          echo "| Tool | Version | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| terraform fmt + validate | $TERRAFORM_VERSION | **PASS** |" >> $GITHUB_STEP_SUMMARY
+
+  e2e-tests:
+    name: "CI: browser end-to-end tests"
+    needs: frontend-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: .artifacts/dist
+      - name: Start Nginx, FastAPI and PostgreSQL
+        run: |
+          docker compose -f infra/local/docker-compose.yml up -d --build
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:8080/api/health && break
+            sleep 2
+          done
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run browser tests
+        working-directory: e2e
+        env:
+          RESTART_API_CMD: docker compose -f ../infra/local/docker-compose.yml restart api
+        run: |
+          npx playwright test || true
+          cd .. && $SUMMARY playwright .artifacts/e2e/e2e.json \
+            "$(cd e2e && npx playwright --version | cut -d' ' -f2)"
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-report
+          path: .artifacts/e2e
+
+  deploy:
+    name: "CD: deploy to AWS"
+    needs: [backend-tests, frontend-build, security-scan, terraform-validate, e2e-tests]
+    # Only a push to main deploys, and only once AWS credentials are configured.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Check the target AWS account
+        run: |
+          actual=$(aws sts get-caller-identity --query Account --output text)
+          if [ "$actual" != "${{ vars.AWS_ACCOUNT_ID }}" ]; then
+            echo "Credentials belong to a different AWS account; stopping before any change."
+            exit 1
+          fi
+          echo "Deploying to the expected AWS account."
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: Terraform apply
+        working-directory: infra/terraform
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=fault-register-tfstate-${{ vars.AWS_ACCOUNT_ID }}" \
+            -backend-config="region=$AWS_REGION"
+          terraform apply -auto-approve -input=false
+          echo "INSTANCE_ID=$(terraform output -raw instance_id)" >> $GITHUB_ENV
+          echo "BUCKET=$(terraform output -raw release_bucket)" >> $GITHUB_ENV
+          echo "APP_URL=$(terraform output -raw app_url)" >> $GITHUB_ENV
+      - uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: .artifacts/dist
+      - name: Package release
+        run: |
+          RELEASE_ID=${GITHUB_SHA::12}
+          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
+          mkdir -p bundle/backend bundle/infra
+          cp -r code/app code/migrations code/alembic.ini code/requirements.txt bundle/backend/
+          cp -r .artifacts/dist bundle/dist
+          cp -r scripts bundle/scripts
+          cp -r infra/nginx infra/systemd bundle/infra/
+          echo "RELEASE_ID=$RELEASE_ID" > bundle/release.env
+          tar -czf release.tar.gz -C bundle .
+          aws s3 cp release.tar.gz "s3://$BUCKET/releases/$RELEASE_ID.tar.gz"
+      - name: Install on EC2 through SSM
+        run: |
+          dir=/opt/fault-register/releases/$RELEASE_ID
+          command_id=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "Deploy $RELEASE_ID" \
+            --parameters "commands=[\"set -e\",\"mkdir -p $dir\",\"aws s3 cp s3://$BUCKET/releases/$RELEASE_ID.tar.gz - | tar -xz -C $dir\",\"bash $dir/scripts/deploy.sh $RELEASE_ID\"]" \
+            --query Command.CommandId --output text)
+          status=Pending
+          while [ "$status" = Pending ] || [ "$status" = InProgress ] || [ "$status" = Delayed ]; do
+            sleep 5
+            status=$(aws ssm get-command-invocation --command-id "$command_id" \
+              --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+          done
+          aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID" \
+            --query '[StandardOutputContent, StandardErrorContent]' --output text
+          echo "| Release | SSM status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| $RELEASE_ID | **$status** |" >> $GITHUB_STEP_SUMMARY
+          [ "$status" = Success ]
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Smoke test the deployed application
+        working-directory: e2e
+        run: |
+          curl -fsS "$APP_URL/api/health" | grep -q "\"release\":\"$RELEASE_ID\""
+          npm ci
+          npx playwright install --with-deps chromium
+          E2E_BASE_URL=$APP_URL npx playwright test --grep @smoke || true
+          cd .. && $SUMMARY playwright .artifacts/e2e/e2e.json "post-deploy smoke"

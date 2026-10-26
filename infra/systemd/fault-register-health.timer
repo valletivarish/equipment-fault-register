@@ -1,0 +1,9 @@
+[Unit]
+Description=Fault register health check every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+
+[Install]
+WantedBy=timers.target

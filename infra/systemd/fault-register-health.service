@@ -1,0 +1,6 @@
+[Unit]
+Description=Push the fault register health result to CloudWatch
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/fault-register/current/scripts/health-metric.sh
