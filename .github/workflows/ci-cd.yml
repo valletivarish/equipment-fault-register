@@ -5,11 +5,21 @@
 # upload to S3, install on EC2 through SSM and a smoke test on the public URL.
 name: CI/CD
 
+# Commits that only touch documentation, the report or the video cannot change
+# the application, so they do not start the pipeline at all.
 on:
   push:
     branches: [main]
+    paths-ignore: ["docs/**", "report/**", "video/**", "**/*.md"]
   pull_request:
+    paths-ignore: ["docs/**", "report/**", "video/**", "**/*.md"]
   workflow_dispatch:
+
+# A newer commit on the same pull request makes the older run redundant.
+# Runs on main are never cancelled so a deployment is not cut off half way.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -43,6 +53,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: code/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r code/requirements-dev.txt defusedxml==0.7.1
       - name: Static analysis (Ruff)
@@ -78,6 +90,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: code/package-lock.json
       - name: Install dependencies
         working-directory: code
         run: npm ci
@@ -115,15 +129,27 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: scripts/ci/requirements-security.txt
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - name: Install scanners
+      - name: Install Python scanners
+        run: pip install -r scripts/ci/requirements-security.txt
+      - name: Restore scanner binaries and Trivy checks
+        id: scanner-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/scanners
+            ~/.cache/trivy
+          key: scanners-gitleaks-${{ env.GITLEAKS_VERSION }}-trivy-${{ env.TRIVY_VERSION }}
+      - name: Download scanner binaries
+        if: steps.scanner-cache.outputs.cache-hit != 'true'
         # Binaries are downloaded from their official releases and checked
         # against the published checksums before use.
         run: |
-          pip install bandit==1.9.4 pip-audit==2.10.1 semgrep==$SEMGREP_VERSION
-          cd /tmp
+          mkdir -p ~/scanners && cd /tmp
           base=https://github.com/gitleaks/gitleaks/releases/download/v$GITLEAKS_VERSION
           curl -fsSLO $base/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz
           curl -fsSLO $base/gitleaks_${GITLEAKS_VERSION}_checksums.txt
@@ -134,7 +160,9 @@ jobs:
           curl -fsSLO $base/trivy_${TRIVY_VERSION}_checksums.txt
           sha256sum --check --ignore-missing trivy_${TRIVY_VERSION}_checksums.txt
           tar -xzf trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz trivy
-          sudo mv gitleaks trivy /usr/local/bin/
+          mv gitleaks trivy ~/scanners/
+      - name: Put scanners on PATH
+        run: echo "$HOME/scanners" >> $GITHUB_PATH
       - name: Python code security (Bandit)
         if: ${{ !cancelled() }}
         run: |
@@ -216,11 +244,25 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Restore Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
       - name: Install Playwright
         working-directory: e2e
+        # On a cache hit only the system libraries are installed; the ~100 MB
+        # Chromium download is skipped.
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
       - name: Run browser tests
         working-directory: e2e
         env:
