@@ -24,7 +24,8 @@ tests, static code analysis and security scans before every deployment.
 ```text
 .github/workflows/   CI/CD pipeline
 code/                application source: FastAPI backend (app/, migrations/, tests/)
-                     and React frontend (src/, e2e/) with their build configuration
+                     and React frontend (src/) with their build configuration
+e2e/                 Playwright browser tests for the whole application
 infra/               Terraform, Nginx configuration and the local Docker Compose stack
 scripts/             deployment and rollback scripts
 docs/                UI plan, evidence, experiments and verification records
@@ -79,7 +80,8 @@ npx eslint .
 ### Browser tests
 
 ```bash
-cd code
+cd e2e
+npm ci
 npx playwright install chromium
 RESTART_API_CMD="docker compose -f ../infra/local/docker-compose.yml restart api" npx playwright test
 ```

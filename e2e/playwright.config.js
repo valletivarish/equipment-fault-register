@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 // Same suite for local, CI and (the @smoke subset) the deployed URL.
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './tests',
   outputDir: '../.artifacts/e2e/results',
   workers: 1,
   fullyParallel: false,
