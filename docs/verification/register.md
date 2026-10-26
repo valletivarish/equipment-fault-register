@@ -4,7 +4,7 @@ States: Planned · Implemented but unverified · Verified with evidence · Block
 
 | Requirement (brief) | State | Evidence |
 | --- | --- | --- |
-| CRUD web application with persistent storage | Verified with evidence (local) | 20 pytest API tests and 7 Playwright browser tests against PostgreSQL 16; CI runs 40359245088, 40359773935 |
+| CRUD web application with persistent storage | Verified with evidence (local) | 23 pytest API tests and 8 Playwright browser tests (plus a manual browser walkthrough) against PostgreSQL 16; CI runs 40359245088, 40359773935 |
 | Automated testing in CI/CD | Verified with evidence | Jobs "backend lint and tests" and "browser end-to-end tests" in runs 40359245088, 40359773935 |
 | Static code analysis | Verified with evidence | Ruff and ESLint in every run; ESLint findings fixed before first commit (`docs/evidence/eslint-local-*.txt`) |
 | Security vulnerability analysis | Verified with evidence | Run 40356987759 failed on Semgrep (1 error) and Trivy (1 critical, 1 high); fixed in the next two commits; run 40359245088 passes. Reports in `docs/evidence/run-40356987759/` |

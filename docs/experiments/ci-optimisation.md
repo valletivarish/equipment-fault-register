@@ -35,7 +35,7 @@ was skipped in every run, as AWS was not configured.
 | Optimised O1 | 40363253377 | e67c6d7 | push (workflow) | cold | 4 | 121 | 3.9 | 62 | 5 / 1 | success |
 | Optimised O2 | 40363756571 | e67c6d7 | dispatch | warm | 5 | 101 | 3.4 | 42 | 5 / 1 | success |
 | Optimised O3 | 40364058668 | e67c6d7 | dispatch | warm | 4 | 113 | 3.9 | 44 | 5 / 1 | success |
-| Optimised docs-only | — | (this commit) | push (docs only) | — | — | 0 | 0 | 0 | 0 / 0 | no run started |
+| Optimised docs-only | none | c59f361 | push (docs only) | — | — | 0 | 0 | 0 | 0 / 0 | no run started |
 
 "Install steps" adds the backend pip install, the scanner install and download, the frontend
 `npm ci` and the Playwright install (which includes the E2E `npm ci`).
