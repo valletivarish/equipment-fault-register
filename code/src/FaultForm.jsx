@@ -10,7 +10,7 @@ const empty = () => ({
   location: '',
   fault_description: '',
   reported_date: today(),
-  repair_status: 'Reported',
+  repair_status: 'Open',
 })
 
 // Used for both report (no id) and edit. Browser constraints catch the obvious

@@ -96,6 +96,29 @@ a { color: inherit; }
 .faults tbody tr:hover { background: var(--page); }
 .faults tbody tr.selected { background: var(--blue-soft); }
 .tag { font-weight: 600; }
+.sort {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.sort-mark { width: 0.7rem; color: var(--blue); }
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.pager > span:first-child { margin-right: auto; }
+.pager .button { height: 32px; }
+.pager .button:disabled { opacity: 0.45; cursor: default; }
 .muted { color: var(--muted); }
 
 .filters {
@@ -148,11 +171,11 @@ a { color: inherit; }
   font-weight: 600;
 }
 .status-mark { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.status-reported { background: #fde8e8; color: #9b1c1c; }
-.status-in-repair { background: #e5e7fb; color: #3b3f9e; }
-.status-awaiting-parts { background: #fef3e2; color: #8a4b08; }
-.status-repaired { background: #e4f4dc; color: #2f5e12; }
-.status-written-off { background: #eef0f3; color: #4b5563; }
+.status-open { background: #fde8e8; color: #9b1c1c; }
+.status-in-progress { background: #e5e7fb; color: #3b3f9e; }
+.status-waiting-for-parts { background: #fef3e2; color: #8a4b08; }
+.status-fixed { background: #e4f4dc; color: #2f5e12; }
+.status-not-repairable { background: #eef0f3; color: #4b5563; }
 
 .back { display: inline-block; margin-bottom: 0.75rem; color: var(--blue); font-weight: 600; }
 .narrow-only { display: none; }

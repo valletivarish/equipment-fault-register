@@ -13,10 +13,14 @@ const FAULT = {
   date: '2026-10-21',
 }
 
+async function testRecords(request) {
+  const page = await (await request.get('/api/faults?q=E2E-&page_size=50')).json()
+  return page.items.filter((f) => f.asset_tag.startsWith('E2E-'))
+}
+
 async function removeTestRecords(request) {
-  const faults = await (await request.get('/api/faults')).json()
-  for (const fault of faults.filter((f) => f.asset_tag.startsWith('E2E-'))) {
-    await request.delete(`/api/faults/${fault.id}`)
+  for (let batch = await testRecords(request); batch.length; batch = await testRecords(request)) {
+    for (const fault of batch) await request.delete(`/api/faults/${fault.id}`)
   }
 }
 
@@ -73,7 +77,7 @@ test('report, read, edit and delete a fault through the UI @smoke', async ({ pag
     await expect(panel.getByText(FAULT.tag, { exact: true })).toBeVisible()
     await expect(panel.getByText(FAULT.description)).toBeVisible()
     const row = page.getByRole('row', { name: new RegExp(FAULT.tag) })
-    await expect(row).toContainText('Reported')
+    await expect(row).toContainText('Open')
     await expect(row).toContainText(FAULT.location)
   })
 
@@ -94,14 +98,14 @@ test('report, read, edit and delete a fault through the UI @smoke', async ({ pag
   await test.step('update', async () => {
     await page.getByRole('link', { name: 'Edit fault' }).click()
     await expect(page.getByLabel('Equipment', { exact: true })).toHaveValue(FAULT.name)
-    await page.getByLabel('Status', { exact: true }).selectOption('Awaiting parts')
+    await page.getByLabel('Status', { exact: true }).selectOption('Waiting for parts')
     await page.getByLabel('What is wrong').fill('Replacement guard ordered')
     await page.getByRole('button', { name: 'Save changes' }).click()
     await expect(page).toHaveURL(/\/faults\/\d+$/)
 
     await page.reload()
     const panel = page.locator('.panel')
-    await expect(panel).toContainText('Awaiting parts')
+    await expect(panel).toContainText('Waiting for parts')
     await expect(panel).toContainText('Replacement guard ordered')
     await expect(panel.getByRole('heading', { name: FAULT.name })).toBeVisible()
     await expect(panel.getByText(FAULT.tag, { exact: true })).toBeVisible()
@@ -117,7 +121,7 @@ test('report, read, edit and delete a fault through the UI @smoke', async ({ pag
 
   await test.step('delete', async () => {
     await page.getByRole('button', { name: 'Delete fault' }).click()
-    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await page.getByRole('button', { name: 'Yes, delete fault' }).click()
     await expect(page).toHaveURL(/\/$/)
     await expect(page.getByRole('row', { name: new RegExp(FAULT.tag) })).toHaveCount(0)
     await page.reload()
@@ -132,8 +136,7 @@ test('report, read, edit and delete a fault through the UI @smoke', async ({ pag
 })
 
 test('invalid input is rejected and nothing is saved', async ({ page, request }) => {
-  const countTestRecords = async () =>
-    (await (await request.get('/api/faults')).json()).filter((f) => f.asset_tag.startsWith('E2E-')).length
+  const countTestRecords = async () => (await testRecords(request)).length
   const before = await countTestRecords()
 
   await page.goto('/faults/new')
@@ -174,7 +177,7 @@ test('loading and backend failure states are usable', async ({ page }) => {
   // Simulated in this tab only; the server is not touched.
   let release
   const held = new Promise((resolve) => { release = resolve })
-  await page.route('**/api/faults', async (route) => {
+  await page.route('**/api/faults?**', async (route) => {
     await held
     await route.abort('connectionrefused')
   })
@@ -184,7 +187,7 @@ test('loading and backend failure states are usable', async ({ page }) => {
   release()
   await expect(page.getByRole('alert')).toContainText('The server could not be reached')
 
-  await page.unroute('**/api/faults')
+  await page.unroute('**/api/faults?**')
   await page.getByRole('button', { name: 'Try again' }).click()
   await expect(page.getByRole('alert')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Report fault' })).toBeVisible()
@@ -217,7 +220,7 @@ async function createFault(request, fields) {
   const response = await request.post('/api/faults', {
     data: {
       location: 'Wood bay', fault_description: 'Synthetic fault for browser tests',
-      reported_date: '2026-10-20', repair_status: 'Reported', ...fields,
+      reported_date: '2026-10-20', repair_status: 'Open', ...fields,
     },
   })
   return response.json()
@@ -246,7 +249,7 @@ test('repair notes can be added, edited and deleted @smoke', async ({ page, requ
   })
 
   await test.step('edit', async () => {
-    await log.getByRole('button', { name: 'Edit' }).click()
+    await log.getByRole('button', { name: 'Edit note' }).click()
     const editForm = log.getByRole('form', { name: 'Save note' })
     await editForm.getByLabel('Work done').fill('Belt replaced and tension set')
     await editForm.getByRole('button', { name: 'Save note' }).click()
@@ -255,11 +258,11 @@ test('repair notes can be added, edited and deleted @smoke', async ({ page, requ
   })
 
   await test.step('cancel then delete', async () => {
-    await log.getByRole('button', { name: 'Delete', exact: true }).click()
+    await log.getByRole('button', { name: 'Delete note' }).click()
     await log.getByRole('button', { name: 'Keep' }).click()
     await expect(log.getByText('Belt replaced and tension set')).toBeVisible()
-    await log.getByRole('button', { name: 'Delete', exact: true }).click()
     await log.getByRole('button', { name: 'Delete note' }).click()
+    await log.getByRole('button', { name: 'Yes, delete note' }).click()
     await expect(log.getByText('No repair work logged yet.')).toBeVisible()
     await page.reload()
     await expect(log.getByText('Belt replaced and tension set')).toHaveCount(0)
@@ -271,7 +274,7 @@ test('repair notes can be added, edited and deleted @smoke', async ({ page, requ
 test('the register can be searched and filtered by status', async ({ page, request }) => {
   await createFault(request, { asset_tag: `${TAG}-S1`, equipment_name: 'Router table' })
   await createFault(request, {
-    asset_tag: `${TAG}-S2`, equipment_name: 'Drum sander', repair_status: 'Repaired',
+    asset_tag: `${TAG}-S2`, equipment_name: 'Drum sander', repair_status: 'Fixed',
   })
   await page.goto('/')
 
@@ -280,7 +283,7 @@ test('the register can be searched and filtered by status', async ({ page, reque
   await expect(page.getByRole('row', { name: /Drum sander/ })).toHaveCount(0)
 
   await page.getByRole('searchbox', { name: 'Search by tag or equipment' }).fill(TAG)
-  await page.getByRole('button', { name: 'Repaired', exact: true }).click()
+  await page.getByRole('button', { name: 'Fixed', exact: true }).click()
   await expect(page.getByRole('row', { name: /Drum sander/ })).toBeVisible()
   await expect(page.getByRole('row', { name: /Router table/ })).toHaveCount(0)
 
@@ -288,4 +291,33 @@ test('the register can be searched and filtered by status', async ({ page, reque
   await expect(page.getByText('No faults match these filters.')).toBeVisible()
   await page.getByRole('button', { name: 'Clear filters' }).click()
   await expect(page.getByRole('row', { name: /Router table/ })).toBeVisible()
+})
+
+test('the register sorts by column and pages through results', async ({ page, request }) => {
+  for (let n = 1; n <= 12; n++) {
+    await createFault(request, {
+      asset_tag: `${TAG}-P${String(n).padStart(2, '0')}`, equipment_name: `Clamp ${n}`,
+    })
+  }
+  await page.goto('/')
+  await page.getByRole('searchbox', { name: 'Search by tag or equipment' }).fill(`${TAG}-P`)
+  const pager = page.getByRole('navigation', { name: 'Register pages' })
+  await expect(pager).toContainText('Showing 1–10 of 12')
+
+  await page.getByRole('button', { name: 'Tag' }).click()
+  await expect(page.getByRole('columnheader', { name: 'Tag' })).toHaveAttribute('aria-sort', 'ascending')
+  await expect(page.locator('.faults tbody tr').first()).toContainText(`${TAG}-P01`)
+
+  await page.getByRole('button', { name: 'Tag' }).click()
+  await expect(page.getByRole('columnheader', { name: 'Tag' })).toHaveAttribute('aria-sort', 'descending')
+  await expect(page.locator('.faults tbody tr').first()).toContainText(`${TAG}-P12`)
+
+  await pager.getByRole('button', { name: 'Next' }).click()
+  await expect(pager).toContainText('Showing 11–12 of 12')
+  await expect(page.locator('.faults tbody tr')).toHaveCount(2)
+  await expect(page.locator('.faults tbody tr').last()).toContainText(`${TAG}-P01`)
+  await expect(pager.getByRole('button', { name: 'Next' })).toBeDisabled()
+
+  await pager.getByRole('button', { name: 'Previous' }).click()
+  await expect(pager).toContainText('Page 1 of 2')
 })

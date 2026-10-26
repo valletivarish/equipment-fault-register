@@ -1,8 +1,8 @@
 # Equipment Fault Register
 
 A web application for a community workshop to record faulty shared equipment and track each
-fault until it is repaired or written off. Coordinators can report a fault, search and filter the
-register, open a fault's details, edit it, delete incorrect records and keep a dated repair log
+fault until it is repaired or written off. Coordinators can report a fault, search, filter, sort and page
+through the register, open a fault's details, edit it, delete incorrect records and keep a dated repair log
 of the work done on each fault.
 
 The application is deployed on AWS through a GitHub Actions CI/CD pipeline that runs automated
@@ -35,8 +35,8 @@ docs/                UI plan, evidence, experiments and verification records
 ## Data model
 
 Each fault records an asset tag (letters, numbers and dashes), the equipment name, its workshop
-location, a fault description, the date it was reported and a repair status: Reported, In repair,
-Awaiting parts, Repaired or Written off. A fault has any number of repair notes, each with a date
+location, a fault description, the date it was reported and a repair status: Open, In progress,
+Waiting for parts, Fixed or Not repairable. A fault has any number of repair notes, each with a date
 and a short description of the work done; a note cannot be dated before the fault was reported
 or in the future, and deleting a fault deletes its notes. The API validates every field, and the
 database enforces the allowed statuses and the link between notes and faults.
@@ -46,7 +46,7 @@ database enforces the allowed statuses and the link between notes and faults.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/health` | Health check including a database query and the running release |
-| GET | `/api/faults?q=&status=` | List faults, newest first, optionally searched by tag or name and filtered by status |
+| GET | `/api/faults?q=&status=&sort=&order=&page=&page_size=` | One page of faults (10 by default, at most 50) with the total and open counts; searched by tag or name, filtered by status and sorted by tag, equipment, location, reported date or status |
 | GET | `/api/faults/{id}` | One fault |
 | POST | `/api/faults` | Report a fault |
 | PUT | `/api/faults/{id}` | Edit a fault |

@@ -3,14 +3,15 @@ to this process on 127.0.0.1:8000: one origin, no CORS needed."""
 
 import os
 from datetime import date
+from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.db import get_session
 from app.models import EquipmentFault, RepairNote
-from app.schemas import FaultIn, FaultOut, NoteIn, NoteOut, RepairStatus
+from app.schemas import FaultIn, FaultOut, FaultPage, NoteIn, NoteOut, RepairStatus
 
 # Interactive docs are off to keep the public surface small.
 app = FastAPI(title="Equipment Fault Register", docs_url=None, redoc_url=None)
@@ -39,23 +40,64 @@ def health(session: Session = Depends(get_session)):
     return {"status": "ok", "release": RELEASE_ID}
 
 
-@app.get("/api/faults", response_model=list[FaultOut])
+# Only these columns can be sorted on; the client sends a key, never SQL.
+SORT_COLUMNS = {
+    "reported_date": EquipmentFault.reported_date,
+    "asset_tag": EquipmentFault.asset_tag,
+    "equipment_name": EquipmentFault.equipment_name,
+    "location": EquipmentFault.location,
+    "repair_status": EquipmentFault.repair_status,
+}
+CLOSED_STATUSES = ("Fixed", "Not repairable")
+
+
+@app.get("/api/faults", response_model=FaultPage)
 def list_faults(
     q: str | None = Query(None, max_length=40),
     status: RepairStatus | None = None,
+    sort: Literal[tuple(SORT_COLUMNS)] = "reported_date",
+    order: Literal["asc", "desc"] = "desc",
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=50),
     session: Session = Depends(get_session),
 ):
-    query = select(EquipmentFault).order_by(
-        EquipmentFault.reported_date.desc(), EquipmentFault.id.desc()
-    )
+    filters = []
     if q and q.strip():
         # autoescape makes % and _ in the search text match literally.
         text_match = EquipmentFault.asset_tag.icontains(q.strip(), autoescape=True)
         name_match = EquipmentFault.equipment_name.icontains(q.strip(), autoescape=True)
-        query = query.where(text_match | name_match)
+        filters.append(text_match | name_match)
     if status:
-        query = query.where(EquipmentFault.repair_status == status)
-    return session.scalars(query).all()
+        filters.append(EquipmentFault.repair_status == status)
+
+    column = SORT_COLUMNS[sort]
+    # id as a tie-breaker keeps rows from moving between pages when values repeat.
+    ordering = (
+        [column.asc(), EquipmentFault.id.asc()]
+        if order == "asc"
+        else [column.desc(), EquipmentFault.id.desc()]
+    )
+    items = session.scalars(
+        select(EquipmentFault)
+        .where(*filters)
+        .order_by(*ordering)
+        .limit(page_size)
+        .offset((page - 1) * page_size)
+    ).all()
+
+    total = session.scalar(select(func.count()).select_from(EquipmentFault).where(*filters))
+    open_count = session.scalar(
+        select(func.count())
+        .select_from(EquipmentFault)
+        .where(*filters, EquipmentFault.repair_status.not_in(CLOSED_STATUSES))
+    )
+    return {
+        "items": items,
+        "total": total,
+        "open_count": open_count,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @app.get("/api/faults/{fault_id}", response_model=FaultOut)

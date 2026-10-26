@@ -68,7 +68,7 @@ export default function RepairLog({ fault }) {
                   <div className="note-actions" role="group" aria-label="Confirm note delete">
                     <span>Delete this note?</span>
                     <button type="button" className="link danger" onClick={() => remove(note.id)}>
-                      Delete note
+                      Yes, delete note
                     </button>
                     <button type="button" className="link" onClick={() => setDeletingId(null)}>
                       Keep
@@ -77,10 +77,10 @@ export default function RepairLog({ fault }) {
                 ) : (
                   <div className="note-actions">
                     <button type="button" className="link" onClick={() => setEditingId(note.id)}>
-                      Edit
+                      Edit note
                     </button>
                     <button type="button" className="link" onClick={() => setDeletingId(note.id)}>
-                      Delete
+                      Delete note
                     </button>
                   </div>
                 )}

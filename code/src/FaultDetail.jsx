@@ -79,7 +79,7 @@ export function FaultDetail({ onDeleted }) {
         <div className="confirm" role="group" aria-label="Confirm delete">
           <p>Delete this fault? This cannot be undone.</p>
           <button type="button" className="button danger" onClick={handleDelete} disabled={busy}>
-            {busy ? 'Deleting…' : 'Delete'}
+            {busy ? 'Deleting…' : 'Yes, delete fault'}
           </button>
           <button type="button" className="button" onClick={() => setConfirming(false)}>Keep</button>
         </div>

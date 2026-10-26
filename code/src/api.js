@@ -39,11 +39,13 @@ function friendlyMessage(message) {
 }
 
 export const api = {
-  list: ({ q = '', status = '' } = {}) => {
-    const params = new URLSearchParams()
+  list: ({ q = '', status = '', sort, order, page = 1 } = {}) => {
+    const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
     if (q.trim()) params.set('q', q.trim())
     if (status) params.set('status', status)
-    return request(`/faults${params.size ? `?${params}` : ''}`)
+    if (sort) params.set('sort', sort)
+    if (order) params.set('order', order)
+    return request(`/faults?${params}`)
   },
   get: (id) => request(`/faults/${id}`),
   create: (data) => request('/faults', { method: 'POST', body: JSON.stringify(data) }),
@@ -56,4 +58,6 @@ export const api = {
   removeNote: (id) => request(`/notes/${id}`, { method: 'DELETE' }),
 }
 
-export const STATUSES = ['Reported', 'In repair', 'Awaiting parts', 'Repaired', 'Written off']
+export const PAGE_SIZE = 10
+
+export const STATUSES = ['Open', 'In progress', 'Waiting for parts', 'Fixed', 'Not repairable']

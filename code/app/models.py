@@ -11,8 +11,8 @@ class EquipmentFault(Base):
     # Second line of defence: rejects a bad status even if it bypasses the API.
     __table_args__ = (
         CheckConstraint(
-            "repair_status IN ('Reported', 'In repair', 'Awaiting parts', "
-            "'Repaired', 'Written off')",
+            "repair_status IN ('Open', 'In progress', 'Waiting for parts', "
+            "'Fixed', 'Not repairable')",
             name="ck_repair_status",
         ),
     )
@@ -23,7 +23,7 @@ class EquipmentFault(Base):
     location: Mapped[str] = mapped_column(String(40))
     fault_description: Mapped[str] = mapped_column(Text)
     reported_date: Mapped[date] = mapped_column(Date)
-    repair_status: Mapped[str] = mapped_column(String(20), default="Reported")
+    repair_status: Mapped[str] = mapped_column(String(20), default="Open")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

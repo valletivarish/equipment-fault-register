@@ -6,7 +6,7 @@ VALID = {
     "location": "Metal bay",
     "fault_description": "Chuck wobbles at high speed",
     "reported_date": "2026-10-20",
-    "repair_status": "Reported",
+    "repair_status": "Open",
 }
 
 
@@ -35,18 +35,18 @@ def test_list_is_newest_first(client):
     create(client, equipment_name="Old saw", reported_date="2026-01-05")
     create(client, equipment_name="New lathe", reported_date="2026-10-01")
 
-    names = [f["equipment_name"] for f in client.get("/api/faults").json()]
+    names = [f["equipment_name"] for f in client.get("/api/faults").json()["items"]]
     assert names == ["New lathe", "Old saw"]
 
 
 def test_update_changes_only_sent_values(client):
     fault = create(client)
-    changed = {**VALID, "repair_status": "In repair"}
+    changed = {**VALID, "repair_status": "In progress"}
 
     response = client.put(f"/api/faults/{fault['id']}", json=changed)
     assert response.status_code == 200
     body = response.json()
-    assert body["repair_status"] == "In repair"
+    assert body["repair_status"] == "In progress"
     assert body["fault_description"] == VALID["fault_description"]
 
 
@@ -97,23 +97,23 @@ def test_search_matches_tag_or_name(client):
     create(client, asset_tag="WS-SAW-02", equipment_name="Band saw")
     create(client, asset_tag="WS-LATHE-01", equipment_name="Wood lathe")
 
-    by_name = client.get("/api/faults", params={"q": "lathe"}).json()
-    by_tag = client.get("/api/faults", params={"q": "saw-0"}).json()
+    by_name = client.get("/api/faults", params={"q": "lathe"}).json()["items"]
+    by_tag = client.get("/api/faults", params={"q": "saw-0"}).json()["items"]
     assert [f["equipment_name"] for f in by_name] == ["Wood lathe"]
     assert [f["asset_tag"] for f in by_tag] == ["WS-SAW-02"]
 
 
 def test_search_treats_wildcards_literally(client):
     create(client)
-    assert client.get("/api/faults", params={"q": "%"}).json() == []
+    assert client.get("/api/faults", params={"q": "%"}).json()["items"] == []
 
 
 def test_filter_by_status(client):
-    create(client, repair_status="Repaired")
-    create(client, repair_status="Reported")
+    create(client, repair_status="Fixed")
+    create(client, repair_status="Open")
 
-    repaired = client.get("/api/faults", params={"status": "Repaired"}).json()
-    assert [f["repair_status"] for f in repaired] == ["Repaired"]
+    fixed = client.get("/api/faults", params={"status": "Fixed"}).json()["items"]
+    assert [f["repair_status"] for f in fixed] == ["Fixed"]
     assert client.get("/api/faults", params={"status": "Lost"}).status_code == 422
 
 
@@ -166,3 +166,36 @@ def test_deleting_fault_removes_its_notes(client):
     note = client.post(f"/api/faults/{fault['id']}/notes", json=NOTE).json()
     client.delete(f"/api/faults/{fault['id']}")
     assert client.put(f"/api/notes/{note['id']}", json=NOTE).status_code == 404
+
+
+def test_sort_by_name_both_directions(client):
+    for name in ["Lathe", "Bandsaw", "Planer"]:
+        create(client, equipment_name=name)
+
+    def names(order):
+        params = {"sort": "equipment_name", "order": order}
+        return [
+            f["equipment_name"] for f in client.get("/api/faults", params=params).json()["items"]
+        ]
+
+    assert names("asc") == ["Bandsaw", "Lathe", "Planer"]
+    assert names("desc") == ["Planer", "Lathe", "Bandsaw"]
+
+
+def test_unknown_sort_column_rejected(client):
+    assert client.get("/api/faults", params={"sort": "id; DROP TABLE x"}).status_code == 422
+    assert client.get("/api/faults", params={"order": "sideways"}).status_code == 422
+
+
+def test_pagination_splits_results(client):
+    for n in range(12):
+        create(client, asset_tag=f"WS-P{n:02d}", repair_status="Fixed" if n < 2 else "Open")
+
+    first = client.get("/api/faults", params={"page_size": 5}).json()
+    last = client.get("/api/faults", params={"page_size": 5, "page": 3}).json()
+    beyond = client.get("/api/faults", params={"page_size": 5, "page": 9}).json()
+
+    assert (first["total"], first["open_count"], len(first["items"])) == (12, 10, 5)
+    assert len(last["items"]) == 2
+    assert beyond["items"] == []
+    assert client.get("/api/faults", params={"page_size": 51}).status_code == 422

@@ -24,7 +24,8 @@ repaired or written off. **Primary action:** "Report fault".
 - **First screen:** the register table on the left, and on the right a panel that asks the user to
   pick a fault or report a new one.
 - **Record view:** a search box and status filter chips sit above the register. Each fault is
-  one table row: asset tag, equipment name, location, reported date, status. Clicking a row opens its details in the side panel (`/faults/:id`). The selected
+  one table row: asset tag, equipment name, location, reported date, status. Column headings sort
+  the register, and a footer pages through it ten rows at a time. Clicking a row opens its details in the side panel (`/faults/:id`). The selected
   row is highlighted in light blue.
 - **Repair log:** under the fault's details, a one-line form adds a dated note; each note can be
   edited in place or deleted after an inline confirmation.
@@ -45,9 +46,9 @@ sidebar, stat cards and job-card grid are not used.
   shadows or gradients.
 - **Accent:** one blue `#1565D8` for the primary button, links, focus rings and the selected row
   (`#E8F0FC`). Red `#C81E1E` is used only for delete and errors.
-- **Status:** a pill with a dot and the status word (Reported red, In repair indigo, Awaiting parts
-  orange, Repaired green, Written off grey). The word is always present, so colour is never the
-  only signal.
+- **Status:** a pill with a dot and the status word (Open red, In progress indigo, Waiting for
+  parts orange, Fixed green, Not repairable grey). The word is always present, so colour is never
+  the only signal.
 - **Type:** Nunito Sans 400/600/700, bundled with the app (no external font requests).
 - **Buttons and forms:** plain 36px buttons (filled blue primary, white secondary with a grey
   border), 40px inputs with a grey border that turns blue on focus.

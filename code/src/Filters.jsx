@@ -1,8 +1,6 @@
 import { STATUSES } from './api.js'
 
 export default function Filters({ filters, onChange }) {
-  const set = (changes) => onChange({ ...filters, ...changes })
-
   return (
     <div className="filters">
       <label className="search">
@@ -12,7 +10,7 @@ export default function Filters({ filters, onChange }) {
           placeholder="Search tag or equipment"
           maxLength={40}
           value={filters.q}
-          onChange={(e) => set({ q: e.target.value })}
+          onChange={(e) => onChange({ q: e.target.value })}
         />
       </label>
       <div className="chips" role="group" aria-label="Filter by status">
@@ -22,7 +20,7 @@ export default function Filters({ filters, onChange }) {
             type="button"
             className="chip"
             aria-pressed={filters.status === status}
-            onClick={() => set({ status })}
+            onClick={() => onChange({ status })}
           >
             {status || 'All'}
           </button>

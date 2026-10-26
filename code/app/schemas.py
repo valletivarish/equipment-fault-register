@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-RepairStatus = Literal["Reported", "In repair", "Awaiting parts", "Repaired", "Written off"]
+RepairStatus = Literal["Open", "In progress", "Waiting for parts", "Fixed", "Not repairable"]
 
 
 class FaultIn(BaseModel):
@@ -13,7 +13,7 @@ class FaultIn(BaseModel):
     location: str = Field(min_length=2, max_length=40)
     fault_description: str = Field(min_length=5, max_length=1000)
     reported_date: date
-    repair_status: RepairStatus = "Reported"
+    repair_status: RepairStatus = "Open"
 
     @field_validator("asset_tag", "equipment_name", "location", "fault_description", mode="before")
     @classmethod
@@ -40,6 +40,14 @@ class FaultOut(FaultIn):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class FaultPage(BaseModel):
+    items: list[FaultOut]
+    total: int
+    open_count: int
+    page: int
+    page_size: int
 
 
 class NoteIn(BaseModel):
