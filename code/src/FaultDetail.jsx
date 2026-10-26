@@ -16,8 +16,7 @@ export function PanelPrompt({ hasFaults }) {
   )
 }
 
-// Detail panel for one fault. The record is fetched by id rather than taken
-// from the list, so a refreshed or shared /faults/:id link still works.
+// Fetched by id, not taken from the list, so a refreshed /faults/:id link works.
 export function FaultDetail({ onDeleted }) {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -26,8 +25,7 @@ export function FaultDetail({ onDeleted }) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  // App remounts this panel when the id changes, so state starts fresh per fault.
-  // The flag ignores a slow response that arrives after the user has moved on.
+  // Ignore a late response after the user has moved to another fault.
   useEffect(() => {
     let current = true
     api.get(id)
@@ -95,6 +93,5 @@ export function FaultDetail({ onDeleted }) {
 }
 
 function BackLink() {
-  // Only needed on narrow screens, where the panel hides the register.
   return <Link to="/" className="back narrow-only">Back to register</Link>
 }

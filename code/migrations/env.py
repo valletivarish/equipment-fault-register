@@ -1,8 +1,5 @@
-"""Alembic runs migrations against the same DATABASE_URL the API uses.
-
-On EC2 the deploy script runs `alembic upgrade head` before switching the
-release, so schema changes reach RDS through the pipeline, not by hand.
-"""
+"""Uses the API's DATABASE_URL; the deploy script runs `alembic upgrade head`
+on EC2 before switching releases, so schema changes reach RDS via the pipeline."""
 
 from alembic import context
 

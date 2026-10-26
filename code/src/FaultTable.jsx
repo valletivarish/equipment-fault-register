@@ -1,8 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import StatusMark, { formatDate } from './StatusMark.jsx'
 
-// The register: one dense row per fault. A row is a link target for both mouse
-// and keyboard (Enter), and the selected row is marked for screen readers too.
 export default function FaultTable({ faults, loading, error, selectedId, onRetry }) {
   const navigate = useNavigate()
 

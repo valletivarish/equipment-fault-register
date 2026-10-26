@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, STATUSES } from './api.js'
 
-// en-CA formats as YYYY-MM-DD in the viewer's local time, which is what a date input expects.
+// en-CA gives YYYY-MM-DD in local time, the format a date input expects.
 const today = () => new Date().toLocaleDateString('en-CA')
 const empty = () => ({
   asset_tag: '',
@@ -12,10 +12,8 @@ const empty = () => ({
   repair_status: 'Reported',
 })
 
-// One form for both "Report fault" (no id in the URL) and "Edit fault".
-// The browser checks the obvious limits first (required, max length, date not
-// in the future); the API repeats every check, and its messages are shown next
-// to the matching field when the server rejects a value.
+// Used for both report (no id) and edit. Browser constraints catch the obvious
+// mistakes; the API re-checks everything and its messages appear per field.
 export default function FaultForm({ onSaved }) {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -26,8 +24,6 @@ export default function FaultForm({ onSaved }) {
   const [loading, setLoading] = useState(editing)
   const [saving, setSaving] = useState(false)
 
-  // App remounts this form whenever the URL id changes, so a new report always
-  // starts empty and only the edit case needs to load the stored record.
   useEffect(() => {
     if (!editing) return
     api.get(id)
@@ -54,7 +50,6 @@ export default function FaultForm({ onSaved }) {
       await onSaved()
       navigate(`/faults/${saved.id}`)
     } catch (e) {
-      // Typed values are kept so nothing is lost when the save fails.
       setFieldErrors(e.fields || {})
       setFormError(e.message)
       setSaving(false)

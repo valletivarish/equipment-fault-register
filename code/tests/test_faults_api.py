@@ -1,5 +1,3 @@
-"""API tests for the fault register CRUD routes and validation rules."""
-
 from datetime import date, timedelta
 
 VALID = {
@@ -25,7 +23,7 @@ def test_health_reports_database_ok(client):
 
 def test_create_then_read_back(client):
     fault = create(client)
-    assert fault["asset_tag"] == "WS-DRILL-04"  # tags are stored in capitals
+    assert fault["asset_tag"] == "WS-DRILL-04"
 
     response = client.get(f"/api/faults/{fault['id']}")
     assert response.status_code == 200

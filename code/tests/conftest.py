@@ -1,10 +1,4 @@
-"""Shared test setup.
-
-The tests run against a real PostgreSQL database (the Docker container locally,
-a service container in GitHub Actions) so they exercise the same SQL behaviour
-as Amazon RDS. The table is emptied before every test so tests do not depend
-on each other.
-"""
+"""Tests use real PostgreSQL (same engine as RDS), emptied before each test."""
 
 import pytest
 from fastapi.testclient import TestClient

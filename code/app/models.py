@@ -1,5 +1,3 @@
-"""Table definition for the equipment fault register."""
-
 from datetime import date, datetime
 
 from sqlalchemy import CheckConstraint, Date, DateTime, Integer, String, Text, func
@@ -7,15 +5,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
 
-# The workshop uses a short, fixed set of repair states. Keeping the list here
-# lets the API schema, the database check constraint and the React form agree.
-REPAIR_STATUSES = ("Reported", "In repair", "Awaiting parts", "Repaired", "Written off")
-
 
 class EquipmentFault(Base):
     __tablename__ = "equipment_faults"
-    # The database enforces the allowed statuses as a second line of defence,
-    # so a bad value is rejected even if it bypasses the API validation.
+    # Second line of defence: rejects a bad status even if it bypasses the API.
     __table_args__ = (
         CheckConstraint(
             "repair_status IN ('Reported', 'In repair', 'Awaiting parts', "

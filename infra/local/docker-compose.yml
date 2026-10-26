@@ -1,6 +1,5 @@
-# Integrated test stack used before any AWS deployment, locally and in the
-# GitHub Actions E2E job: PostgreSQL 16 (same engine as RDS), the FastAPI
-# backend and Nginx serving the production React build on one origin.
+# Pre-deployment test stack (local and CI E2E job): PostgreSQL 16, FastAPI and
+# Nginx with the same site config used on EC2.
 name: fault-register
 
 services:
@@ -35,9 +34,8 @@ services:
     volumes:
       - ../../.artifacts/dist:/opt/fault-register/current/dist:ro
       - ../nginx/fault-register.conf:/etc/nginx/templates/site.conf:ro
-    # The EC2 config proxies to 127.0.0.1; inside Compose the backend is the
-    # "api" service, so only that address is swapped when the file is loaded.
-    # Docker's resolver lets Nginx find the api container again after a restart.
+    # Swap the EC2 loopback upstream for the "api" service; Docker's resolver
+    # lets Nginx find the container again after the E2E restart test.
     command:
       - sh
       - -c

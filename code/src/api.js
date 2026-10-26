@@ -1,6 +1,4 @@
-// Small wrapper around fetch for the /api routes.
-// Paths are relative, so the same build works behind Nginx on EC2 and behind
-// the Vite proxy locally without knowing any server address.
+// Relative /api paths: the same build works behind Nginx on EC2 and the Vite proxy.
 
 async function request(path, options = {}) {
   let response
@@ -20,8 +18,7 @@ async function request(path, options = {}) {
     const error = new Error(body?.detail && typeof body.detail === 'string'
       ? body.detail
       : `Request failed (${response.status}).`)
-    // FastAPI returns validation problems as a list; keep them per field so the
-    // form can show each message next to the input it belongs to.
+    // FastAPI validation errors arrive as a list; map them to form fields.
     if (Array.isArray(body?.detail)) {
       error.fields = {}
       for (const item of body.detail) {
@@ -35,8 +32,7 @@ async function request(path, options = {}) {
   return body
 }
 
-// Pydantic's pattern message shows a regular expression; replace it with
-// words a coordinator understands. Other messages are already plain English.
+// Pydantic's pattern message shows a regex, which means nothing to a user.
 function friendlyMessage(message) {
   if (message.includes('should match pattern')) return 'Use only letters, numbers and dashes.'
   return message.replace(/^Value error, /, '')

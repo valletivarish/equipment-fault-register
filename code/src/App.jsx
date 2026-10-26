@@ -5,15 +5,11 @@ import FaultTable from './FaultTable.jsx'
 import { FaultDetail, PanelPrompt } from './FaultDetail.jsx'
 import FaultForm from './FaultForm.jsx'
 
-// App owns the list of faults. The register on the left and the panel on the
-// right both read from it, and every save or delete reloads it from the API
-// so the screen always shows what is stored in the database.
 export default function App() {
   const [faults, setFaults] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
-  // Reloads after a save or delete, called from event handlers.
   const reload = useCallback(async () => {
     try {
       setFaults(await api.list())
@@ -25,15 +21,13 @@ export default function App() {
     }
   }, [])
 
-  // First load when the page opens; state is only set once the request settles.
   useEffect(() => {
     api.list()
       .then(setFaults, (error) => setLoadError(error.message))
       .finally(() => setLoading(false))
   }, [])
 
-  // On narrow screens the panel replaces the register whenever a fault or a
-  // form is open; this flag lets CSS hide the register in that case.
+  // Lets CSS hide the register on phones while a fault or form is open.
   const panelOpen = Boolean(useMatch('/faults/*'))
   const selected = useMatch('/faults/:id/*')?.params.id
   const openCount = faults.filter((f) => !['Repaired', 'Written off'].includes(f.repair_status)).length
@@ -77,9 +71,7 @@ export default function App() {
   )
 }
 
-// Gives the panel a new React key for every fault id, so moving from one fault
-// to another (or to "Report fault") starts with clean state instead of
-// showing the previous record while the next one loads.
+// New key per fault id resets panel state instead of showing the previous record.
 function FreshPer({ Component, ...props }) {
   const { id } = useParams()
   return <Component key={id ?? 'new'} {...props} />

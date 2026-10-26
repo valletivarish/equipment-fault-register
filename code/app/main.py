@@ -1,9 +1,5 @@
-"""HTTP API for the equipment fault register.
-
-Every route sits under /api so Nginx can serve the React build at / and pass
-only /api/ requests to this process on 127.0.0.1:8000. The browser therefore
-talks to a single origin and no CORS configuration is needed.
-"""
+"""Routes live under /api so Nginx can serve React at / and proxy only /api/
+to this process on 127.0.0.1:8000: one origin, no CORS needed."""
 
 import os
 
@@ -15,11 +11,10 @@ from app.db import get_session
 from app.models import EquipmentFault
 from app.schemas import FaultIn, FaultOut
 
-# Interactive docs are switched off in production to reduce the public surface.
+# Interactive docs are off to keep the public surface small.
 app = FastAPI(title="Equipment Fault Register", docs_url=None, redoc_url=None)
 
-# The deploy script sets RELEASE_ID to the git commit SHA, so the health check
-# shows exactly which tested commit is running on EC2.
+# Set to the git commit SHA by the deploy script.
 RELEASE_ID = os.environ.get("RELEASE_ID", "local")
 
 
@@ -32,10 +27,9 @@ def find_fault(fault_id: int, session: Session) -> EquipmentFault:
 
 @app.get("/api/health")
 def health(session: Session = Depends(get_session)):
-    """Used by the CD smoke test, the rollback script and monitoring.
+    """Queries the database so a broken RDS connection reports unhealthy.
 
-    It runs a trivial query so a broken RDS connection shows as unhealthy
-    instead of the API looking fine while every real request fails.
+    Used by the CD smoke test, the rollback script and monitoring.
     """
     try:
         session.execute(text("SELECT 1"))
@@ -46,7 +40,6 @@ def health(session: Session = Depends(get_session)):
 
 @app.get("/api/faults", response_model=list[FaultOut])
 def list_faults(session: Session = Depends(get_session)):
-    # Newest reports first, which is how the coordinator reads the register.
     query = select(EquipmentFault).order_by(
         EquipmentFault.reported_date.desc(), EquipmentFault.id.desc()
     )

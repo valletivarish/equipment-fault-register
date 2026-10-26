@@ -1,5 +1,4 @@
-# Local and CI copy of the EC2 backend runtime: same Python version, same
-# pinned packages, migrations applied before the server starts.
+# Same Python and pinned packages as EC2; migrations run before the server starts.
 FROM python:3.12-slim
 WORKDIR /srv
 RUN useradd --create-home appuser

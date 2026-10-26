@@ -1,10 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// The same suite runs against the local Docker stack, the CI stack and, for
-// the @smoke subset, the deployed EC2 URL; only E2E_BASE_URL changes.
+// Same suite for local, CI and (the @smoke subset) the deployed URL.
 export default defineConfig({
   testDir: './e2e',
-  // Reports, traces and screenshots are written outside code/.
   outputDir: '../.artifacts/e2e/results',
   workers: 1,
   fullyParallel: false,
