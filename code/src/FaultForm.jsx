@@ -7,6 +7,7 @@ const today = () => new Date().toLocaleDateString('en-CA')
 const empty = () => ({
   asset_tag: '',
   equipment_name: '',
+  location: '',
   fault_description: '',
   reported_date: today(),
   repair_status: 'Reported',
@@ -28,8 +29,10 @@ export default function FaultForm({ onSaved }) {
     if (!editing) return
     api.get(id)
       .then((fault) => {
-        const { asset_tag, equipment_name, fault_description, reported_date, repair_status } = fault
-        setValues({ asset_tag, equipment_name, fault_description, reported_date, repair_status })
+        const { asset_tag, equipment_name, location, fault_description, reported_date,
+          repair_status } = fault
+        setValues({ asset_tag, equipment_name, location, fault_description, reported_date,
+          repair_status })
       })
       .catch((e) => setFormError(e.message))
       .finally(() => setLoading(false))
@@ -76,6 +79,12 @@ export default function FaultForm({ onSaved }) {
       <Field label="Equipment" name="equipment_name" error={fieldErrors.equipment_name}>
         <input id="equipment_name" name="equipment_name" value={values.equipment_name}
           onChange={change} required minLength={2} maxLength={80} />
+      </Field>
+
+      <Field label="Location" name="location" error={fieldErrors.location}
+        hint="Workshop area, e.g. Wood bay">
+        <input id="location" name="location" value={values.location} onChange={change}
+          required minLength={2} maxLength={40} />
       </Field>
 
       <Field label="What is wrong" name="fault_description" error={fieldErrors.fault_description}>

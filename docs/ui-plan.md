@@ -23,9 +23,11 @@ repaired or written off. **Primary action:** "Report fault".
   "Report fault" button. No sidebar, no dashboard.
 - **First screen:** the register table on the left, and on the right a panel that asks the user to
   pick a fault or report a new one.
-- **Record view:** each fault is one dense table row: asset tag, equipment name, reported
-  date, status. Clicking a row opens its details in the side panel (`/faults/:id`). The selected
+- **Record view:** a search box and status filter chips sit above the register. Each fault is
+  one table row: asset tag, equipment name, location, reported date, status. Clicking a row opens its details in the side panel (`/faults/:id`). The selected
   row is highlighted in light blue.
+- **Repair log:** under the fault's details, a one-line form adds a dated note; each note can be
+  edited in place or deleted after an inline confirmation.
 - **Create/edit placement:** the form opens in the same side panel (`/faults/new`,
   `/faults/:id/edit`), so the register stays visible while typing. Delete asks for confirmation
   inside the panel ("Delete this fault?" with Delete and Keep buttons), not in a browser pop-up.

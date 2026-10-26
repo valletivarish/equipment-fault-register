@@ -1,8 +1,9 @@
 # Equipment Fault Register
 
 A web application for a community workshop to record faulty shared equipment and track each
-fault until it is repaired or written off. Coordinators can report a fault, browse the register,
-open a fault's details, edit its description or repair status, and delete incorrect records.
+fault until it is repaired or written off. Coordinators can report a fault, search and filter the
+register, open a fault's details, edit it, delete incorrect records and keep a dated repair log
+of the work done on each fault.
 
 The application is deployed on AWS through a GitHub Actions CI/CD pipeline that runs automated
 tests, static code analysis and security scans before every deployment.
@@ -33,21 +34,27 @@ docs/                UI plan, evidence, experiments and verification records
 
 ## Data model
 
-Each fault records an asset tag (letters, numbers and dashes), the equipment name, a fault
-description, the date it was reported and a repair status: Reported, In repair, Awaiting parts,
-Repaired or Written off. The API validates every field, and the database enforces the
-allowed statuses.
+Each fault records an asset tag (letters, numbers and dashes), the equipment name, its workshop
+location, a fault description, the date it was reported and a repair status: Reported, In repair,
+Awaiting parts, Repaired or Written off. A fault has any number of repair notes, each with a date
+and a short description of the work done; a note cannot be dated before the fault was reported
+or in the future, and deleting a fault deletes its notes. The API validates every field, and the
+database enforces the allowed statuses and the link between notes and faults.
 
 ## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/health` | Health check including a database query and the running release |
-| GET | `/api/faults` | List faults, newest first |
+| GET | `/api/faults?q=&status=` | List faults, newest first, optionally searched by tag or name and filtered by status |
 | GET | `/api/faults/{id}` | One fault |
 | POST | `/api/faults` | Report a fault |
 | PUT | `/api/faults/{id}` | Edit a fault |
-| DELETE | `/api/faults/{id}` | Delete a fault |
+| DELETE | `/api/faults/{id}` | Delete a fault and its notes |
+| GET | `/api/faults/{id}/notes` | Repair notes for a fault, newest first |
+| POST | `/api/faults/{id}/notes` | Add a repair note |
+| PUT | `/api/notes/{id}` | Edit a repair note |
+| DELETE | `/api/notes/{id}` | Delete a repair note |
 
 ## Running locally
 

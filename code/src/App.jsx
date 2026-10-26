@@ -2,34 +2,46 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, Route, Routes, useMatch, useParams } from 'react-router-dom'
 import { api } from './api.js'
 import FaultTable from './FaultTable.jsx'
+import Filters from './Filters.jsx'
 import { FaultDetail, PanelPrompt } from './FaultDetail.jsx'
 import FaultForm from './FaultForm.jsx'
 
+const NO_FILTERS = { q: '', status: '' }
+
 export default function App() {
   const [faults, setFaults] = useState([])
+  const [filters, setFilters] = useState(NO_FILTERS)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
   const reload = useCallback(async () => {
     try {
-      setFaults(await api.list())
+      setFaults(await api.list(filters))
       setLoadError('')
     } catch (error) {
       setLoadError(error.message)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [filters])
 
+  // Typing waits 250 ms before searching so each keystroke is not a request;
+  // a response for older filters is ignored if newer ones were chosen.
   useEffect(() => {
-    api.list()
-      .then(setFaults, (error) => setLoadError(error.message))
-      .finally(() => setLoading(false))
-  }, [])
+    let current = true
+    const timer = setTimeout(() => {
+      api.list(filters)
+        .then((data) => { if (current) { setFaults(data); setLoadError('') } })
+        .catch((error) => current && setLoadError(error.message))
+        .finally(() => current && setLoading(false))
+    }, filters.q ? 250 : 0)
+    return () => { current = false; clearTimeout(timer) }
+  }, [filters])
 
   // Lets CSS hide the register on phones while a fault or form is open.
   const panelOpen = Boolean(useMatch('/faults/*'))
   const selected = useMatch('/faults/:id/*')?.params.id
+  const filtered = filters.q !== '' || filters.status !== ''
   const openCount = faults.filter((f) => !['Repaired', 'Written off'].includes(f.repair_status)).length
 
   return (
@@ -38,7 +50,9 @@ export default function App() {
         <Link to="/" className="brand">Fault register</Link>
         {!loading && !loadError && (
           <p className="counts">
-            {openCount} open of {faults.length} recorded
+            {filtered
+              ? `${faults.length} matching ${faults.length === 1 ? 'fault' : 'faults'}`
+              : `${openCount} open of ${faults.length} recorded`}
           </p>
         )}
         <Link to="/faults/new" className="button primary">Report fault</Link>
@@ -46,12 +60,15 @@ export default function App() {
 
       <main className="workbench">
         <section className="register" aria-label="Fault register">
+          <Filters filters={filters} onChange={setFilters} />
           <FaultTable
             faults={faults}
             loading={loading}
             error={loadError}
+            filtered={filtered}
             selectedId={selected}
             onRetry={reload}
+            onClearFilters={() => setFilters(NO_FILTERS)}
           />
         </section>
 

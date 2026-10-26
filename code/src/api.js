@@ -39,11 +39,21 @@ function friendlyMessage(message) {
 }
 
 export const api = {
-  list: () => request('/faults'),
+  list: ({ q = '', status = '' } = {}) => {
+    const params = new URLSearchParams()
+    if (q.trim()) params.set('q', q.trim())
+    if (status) params.set('status', status)
+    return request(`/faults${params.size ? `?${params}` : ''}`)
+  },
   get: (id) => request(`/faults/${id}`),
   create: (data) => request('/faults', { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => request(`/faults/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (id) => request(`/faults/${id}`, { method: 'DELETE' }),
+  notes: (faultId) => request(`/faults/${faultId}/notes`),
+  addNote: (faultId, data) =>
+    request(`/faults/${faultId}/notes`, { method: 'POST', body: JSON.stringify(data) }),
+  updateNote: (id, data) => request(`/notes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  removeNote: (id) => request(`/notes/${id}`, { method: 'DELETE' }),
 }
 
 export const STATUSES = ['Reported', 'In repair', 'Awaiting parts', 'Repaired', 'Written off']

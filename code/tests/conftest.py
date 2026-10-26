@@ -18,7 +18,7 @@ def create_schema():
 @pytest.fixture(autouse=True)
 def clean_table():
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE equipment_faults RESTART IDENTITY"))
+        conn.execute(text("TRUNCATE equipment_faults, repair_notes RESTART IDENTITY CASCADE"))
 
 
 @pytest.fixture

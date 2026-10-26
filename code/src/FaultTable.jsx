@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import StatusMark, { formatDate } from './StatusMark.jsx'
 
-export default function FaultTable({ faults, loading, error, selectedId, onRetry }) {
+export default function FaultTable({
+  faults, loading, error, filtered, selectedId, onRetry, onClearFilters,
+}) {
   const navigate = useNavigate()
 
   if (loading) return <p className="notice">Loading the register…</p>
@@ -11,6 +13,15 @@ export default function FaultTable({ faults, loading, error, selectedId, onRetry
       <div className="notice error" role="alert">
         <p>{error}</p>
         <button type="button" className="button" onClick={onRetry}>Try again</button>
+      </div>
+    )
+  }
+
+  if (faults.length === 0 && filtered) {
+    return (
+      <div className="notice">
+        <p>No faults match these filters.</p>
+        <button type="button" className="button" onClick={onClearFilters}>Clear filters</button>
       </div>
     )
   }
@@ -25,6 +36,7 @@ export default function FaultTable({ faults, loading, error, selectedId, onRetry
         <tr>
           <th scope="col">Tag</th>
           <th scope="col">Equipment</th>
+          <th scope="col">Location</th>
           <th scope="col">Reported</th>
           <th scope="col">Status</th>
         </tr>
@@ -44,6 +56,7 @@ export default function FaultTable({ faults, loading, error, selectedId, onRetry
             >
               <td className="tag">{fault.asset_tag}</td>
               <td>{fault.equipment_name}</td>
+              <td className="muted">{fault.location}</td>
               <td className="date">{formatDate(fault.reported_date, true)}</td>
               <td><StatusMark status={fault.repair_status} /></td>
             </tr>

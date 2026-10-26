@@ -96,6 +96,46 @@ a { color: inherit; }
 .faults tbody tr:hover { background: var(--page); }
 .faults tbody tr.selected { background: var(--blue-soft); }
 .tag { font-weight: 600; }
+.muted { color: var(--muted); }
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.search input {
+  width: 15rem;
+  height: 34px;
+  padding: 0 0.65rem;
+  border: 1px solid #d1d5db;
+  border-radius: var(--radius);
+  font: inherit;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.chip {
+  height: 30px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .date { color: var(--muted); }
 
 .status {
@@ -135,6 +175,36 @@ a { color: inherit; }
   border-radius: var(--radius);
   white-space: pre-wrap;
 }
+.repair-log { margin-top: 1.75rem; padding-top: 0.25rem; border-top: 1px solid var(--border); }
+.note-form { display: grid; gap: 0.4rem; }
+.note-form-row { display: flex; gap: 0.6rem; }
+.note-form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.82rem; font-weight: 600; }
+.note-form .grow { flex: 1; }
+.note-form input {
+  height: 36px;
+  padding: 0 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 400;
+}
+.note-form-actions { display: flex; align-items: center; gap: 0.75rem; }
+.notes { list-style: none; margin: 1rem 0 0; padding: 0; }
+.notes > li { padding: 0.7rem 0; border-top: 1px solid var(--border); }
+.note-date { margin: 0; color: var(--muted); font-size: 0.82rem; font-weight: 600; }
+.note-text { margin: 0.15rem 0 0.3rem; }
+.note-actions { display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--blue);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.link.danger { color: var(--danger); }
+
 .actions, .confirm { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; }
 .confirm {
   align-items: center;
@@ -178,8 +248,9 @@ a { color: inherit; }
   .topbar .button.primary { margin-left: auto; }
   .counts { order: 3; width: 100%; }
   .workbench { grid-template-columns: 1fr; padding: 1rem; gap: 1rem; }
-  /* Date column dropped on phones; it is still shown in the detail panel. */
-  .faults th:nth-child(3), .faults td:nth-child(3) { display: none; }
+  /* Location and date are dropped on phones; both are in the detail panel. */
+  .faults th:nth-child(3), .faults td:nth-child(3),
+  .faults th:nth-child(4), .faults td:nth-child(4) { display: none; }
   .faults { font-size: 0.9rem; }
   .faults th, .faults td { padding: 0.65rem 0.5rem; }
   .shell:not(.panel-open) .panel { display: none; }

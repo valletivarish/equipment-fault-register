@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from './api.js'
+import RepairLog from './RepairLog.jsx'
 import StatusMark, { formatDate } from './StatusMark.jsx'
 
 export function PanelPrompt({ hasFaults }) {
@@ -65,6 +66,8 @@ export function FaultDetail({ onDeleted }) {
       <dl className="facts">
         <dt>Status</dt>
         <dd><StatusMark status={fault.repair_status} /></dd>
+        <dt>Location</dt>
+        <dd>{fault.location}</dd>
         <dt>Reported</dt>
         <dd className="date">{formatDate(fault.reported_date)}</dd>
       </dl>
@@ -88,6 +91,8 @@ export function FaultDetail({ onDeleted }) {
           </button>
         </div>
       )}
+
+      <RepairLog fault={fault} />
     </article>
   )
 }

@@ -8,6 +8,7 @@ const TAG = `E2E-${Date.now().toString(36).toUpperCase()}`
 const FAULT = {
   tag: TAG,
   name: 'Bench grinder',
+  location: 'Metal bay',
   description: 'Guard rattles and the left wheel vibrates under load',
   date: '2026-10-21',
 }
@@ -60,7 +61,8 @@ test('report, read, edit and delete a fault through the UI @smoke', async ({ pag
 
   await test.step('create', async () => {
     await page.getByLabel('Asset tag').fill(FAULT.tag.toLowerCase())
-    await page.getByLabel('Equipment').fill(FAULT.name)
+    await page.getByLabel('Equipment', { exact: true }).fill(FAULT.name)
+    await page.getByLabel('Location').fill(FAULT.location)
     await page.getByLabel('What is wrong').fill(FAULT.description)
     await page.getByLabel('Reported on').fill(FAULT.date)
     await page.getByRole('button', { name: 'Report fault' }).click()
@@ -70,7 +72,9 @@ test('report, read, edit and delete a fault through the UI @smoke', async ({ pag
     await expect(panel.getByRole('heading', { name: FAULT.name })).toBeVisible()
     await expect(panel.getByText(FAULT.tag, { exact: true })).toBeVisible()
     await expect(panel.getByText(FAULT.description)).toBeVisible()
-    await expect(page.getByRole('row', { name: new RegExp(FAULT.tag) })).toContainText('Reported')
+    const row = page.getByRole('row', { name: new RegExp(FAULT.tag) })
+    await expect(row).toContainText('Reported')
+    await expect(row).toContainText(FAULT.location)
   })
 
   await test.step('read back after a browser reload', async () => {
@@ -89,8 +93,8 @@ test('report, read, edit and delete a fault through the UI @smoke', async ({ pag
 
   await test.step('update', async () => {
     await page.getByRole('link', { name: 'Edit fault' }).click()
-    await expect(page.getByLabel('Equipment')).toHaveValue(FAULT.name)
-    await page.getByLabel('Status').selectOption('Awaiting parts')
+    await expect(page.getByLabel('Equipment', { exact: true })).toHaveValue(FAULT.name)
+    await page.getByLabel('Status', { exact: true }).selectOption('Awaiting parts')
     await page.getByLabel('What is wrong').fill('Replacement guard ordered')
     await page.getByRole('button', { name: 'Save changes' }).click()
     await expect(page).toHaveURL(/\/faults\/\d+$/)
@@ -146,7 +150,8 @@ test('invalid input is rejected and nothing is saved', async ({ page, request })
 
   // Spaces pass the browser check; the API trims and rejects them.
   await page.getByLabel('Asset tag').fill(`${TAG}-X`)
-  await page.getByLabel('Equipment').fill('   ')
+  await page.getByLabel('Equipment', { exact: true }).fill('   ')
+  await page.getByLabel('Location').fill('Wood bay')
   await page.getByLabel('What is wrong').fill('Motor hums but does not start')
   await page.getByLabel('Reported on').fill('2026-10-20')
   await submit.click()
@@ -188,7 +193,7 @@ test('loading and backend failure states are usable', async ({ page }) => {
 test('register works by keyboard and on a phone-sized screen', async ({ page, request }) => {
   await request.post('/api/faults', {
     data: {
-      asset_tag: `${TAG}-M`, equipment_name: 'Scroll saw',
+      asset_tag: `${TAG}-M`, equipment_name: 'Scroll saw', location: 'Wood bay',
       fault_description: 'Blade tension knob is stripped', reported_date: '2026-10-19',
     },
   })
@@ -206,4 +211,81 @@ test('register works by keyboard and on a phone-sized screen', async ({ page, re
   await expect(page.locator('.register')).toBeHidden()
   await page.getByRole('link', { name: 'Back to register' }).click()
   await expect(page.locator('.register')).toBeVisible()
+})
+
+async function createFault(request, fields) {
+  const response = await request.post('/api/faults', {
+    data: {
+      location: 'Wood bay', fault_description: 'Synthetic fault for browser tests',
+      reported_date: '2026-10-20', repair_status: 'Reported', ...fields,
+    },
+  })
+  return response.json()
+}
+
+test('repair notes can be added, edited and deleted @smoke', async ({ page, request }) => {
+  const problems = watchForProblems(page)
+  const fault = await createFault(request, { asset_tag: `${TAG}-N`, equipment_name: 'Spindle moulder' })
+  await page.goto(`/faults/${fault.id}`)
+  const log = page.getByRole('region', { name: 'Repair log' })
+  await expect(log.getByText('No repair work logged yet.')).toBeVisible()
+
+  await test.step('add', async () => {
+    await log.getByLabel('Date').fill('2026-10-21')
+    await log.getByLabel('Work done').fill('Belt tension adjusted')
+    await log.getByRole('button', { name: 'Add note' }).click()
+    await expect(log.getByText('Belt tension adjusted')).toBeVisible()
+    await page.reload()
+    await expect(log.getByText('Belt tension adjusted')).toBeVisible()
+    await expect(log.getByText('21 Oct 2026')).toBeVisible()
+  })
+
+  await test.step('a date before the fault was reported is rejected', async () => {
+    await log.getByLabel('Date').first().fill('2026-10-01')
+    await expect(log.getByLabel('Date').first()).toHaveJSProperty('validity.rangeUnderflow', true)
+  })
+
+  await test.step('edit', async () => {
+    await log.getByRole('button', { name: 'Edit' }).click()
+    const editForm = log.getByRole('form', { name: 'Save note' })
+    await editForm.getByLabel('Work done').fill('Belt replaced and tension set')
+    await editForm.getByRole('button', { name: 'Save note' }).click()
+    await page.reload()
+    await expect(log.getByText('Belt replaced and tension set')).toBeVisible()
+  })
+
+  await test.step('cancel then delete', async () => {
+    await log.getByRole('button', { name: 'Delete', exact: true }).click()
+    await log.getByRole('button', { name: 'Keep' }).click()
+    await expect(log.getByText('Belt replaced and tension set')).toBeVisible()
+    await log.getByRole('button', { name: 'Delete', exact: true }).click()
+    await log.getByRole('button', { name: 'Delete note' }).click()
+    await expect(log.getByText('No repair work logged yet.')).toBeVisible()
+    await page.reload()
+    await expect(log.getByText('Belt replaced and tension set')).toHaveCount(0)
+  })
+
+  expect(problems).toEqual([])
+})
+
+test('the register can be searched and filtered by status', async ({ page, request }) => {
+  await createFault(request, { asset_tag: `${TAG}-S1`, equipment_name: 'Router table' })
+  await createFault(request, {
+    asset_tag: `${TAG}-S2`, equipment_name: 'Drum sander', repair_status: 'Repaired',
+  })
+  await page.goto('/')
+
+  await page.getByRole('searchbox', { name: 'Search by tag or equipment' }).fill('router')
+  await expect(page.getByRole('row', { name: /Router table/ })).toBeVisible()
+  await expect(page.getByRole('row', { name: /Drum sander/ })).toHaveCount(0)
+
+  await page.getByRole('searchbox', { name: 'Search by tag or equipment' }).fill(TAG)
+  await page.getByRole('button', { name: 'Repaired', exact: true }).click()
+  await expect(page.getByRole('row', { name: /Drum sander/ })).toBeVisible()
+  await expect(page.getByRole('row', { name: /Router table/ })).toHaveCount(0)
+
+  await page.getByRole('searchbox', { name: 'Search by tag or equipment' }).fill('no-such-thing')
+  await expect(page.getByText('No faults match these filters.')).toBeVisible()
+  await page.getByRole('button', { name: 'Clear filters' }).click()
+  await expect(page.getByRole('row', { name: /Router table/ })).toBeVisible()
 })
