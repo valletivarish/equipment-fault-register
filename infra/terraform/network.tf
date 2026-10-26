@@ -50,34 +50,53 @@ resource "aws_security_group" "web" {
   name        = "fault-register-web"
   description = "Public HTTP to Nginx only; no SSH, administration uses SSM"
   vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description = "Public HTTP for the web application"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "Package installs, PyPI, S3 and the SSM/CloudWatch endpoints"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 }
 
 resource "aws_security_group" "db" {
   name        = "fault-register-db"
   description = "PostgreSQL reachable only from the web server"
   vpc_id      = aws_vpc.main.id
+}
 
-  ingress {
-    description     = "PostgreSQL from the EC2 backend"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.web.id]
-  }
+# Rules are separate resources so the web and database groups can refer to
+# each other without a dependency cycle.
+resource "aws_vpc_security_group_ingress_rule" "web_http" {
+  security_group_id = aws_security_group.web.id
+  description       = "Public HTTP for the web application"
+  ip_protocol       = "tcp"
+  from_port         = 80
+  to_port           = 80
+  cidr_ipv4         = "0.0.0.0/0"
+}
+
+# Outbound traffic is limited to HTTPS: dnf repositories, PyPI and the S3, SSM
+# and CloudWatch APIs. Those AWS endpoints have no fixed address range, and
+# VPC interface endpoints would add an hourly charge per service, so the
+# destination stays open while the port is restricted.
+#trivy:ignore:AWS-0104
+resource "aws_vpc_security_group_egress_rule" "web_https" {
+  security_group_id = aws_security_group.web.id
+  description       = "HTTPS to package mirrors and AWS APIs"
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+  cidr_ipv4         = "0.0.0.0/0"
+}
+
+resource "aws_vpc_security_group_egress_rule" "web_to_db" {
+  security_group_id            = aws_security_group.web.id
+  description                  = "PostgreSQL to RDS only"
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.db.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "db_from_web" {
+  security_group_id            = aws_security_group.db.id
+  description                  = "PostgreSQL from the EC2 backend"
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.web.id
 }

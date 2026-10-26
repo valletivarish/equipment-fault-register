@@ -30,10 +30,12 @@ resource "aws_db_instance" "main" {
   vpc_security_group_ids     = [aws_security_group.db.id]
   publicly_accessible        = false
   multi_az                   = false
-  backup_retention_period    = 1
+  backup_retention_period    = 7
+  deletion_protection        = true
   auto_minor_version_upgrade = true
   copy_tags_to_snapshot      = true
-  skip_final_snapshot        = true
+  skip_final_snapshot        = false
+  final_snapshot_identifier  = "fault-register-final"
   apply_immediately          = true
 }
 

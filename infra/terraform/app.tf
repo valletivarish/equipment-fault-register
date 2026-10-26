@@ -61,6 +61,10 @@ resource "aws_s3_bucket_public_access_block" "releases" {
   restrict_public_buckets = true
 }
 
+# SSE-S3 rather than a customer-managed KMS key: the bucket holds only code
+# bundles (no secrets or user data), and a CMK would add a monthly key charge
+# and key-policy management for no real gain in this risk profile.
+#trivy:ignore:AWS-0132
 resource "aws_s3_bucket_server_side_encryption_configuration" "releases" {
   bucket = aws_s3_bucket.releases.id
 
