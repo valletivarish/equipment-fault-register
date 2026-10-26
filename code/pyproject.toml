@@ -1,0 +1,18 @@
+[tool.ruff]
+cache-dir = "../.artifacts/ruff-cache"
+line-length = 100
+target-version = "py312"
+extend-exclude = ["node_modules", "dist"]
+
+[tool.ruff.lint]
+# pyflakes, pycodestyle, import order, bugbear and common security-minded checks
+select = ["E", "F", "W", "I", "B", "S"]
+ignore = ["B008"]  # FastAPI's Depends() in defaults is the framework's intended style
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # assert is how pytest checks results
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# No .pytest_cache folder inside code/.
+addopts = "-p no:cacheprovider"

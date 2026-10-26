@@ -1,0 +1,18 @@
+# Generated output, caches and local environments (kept out of git and the ZIP)
+.artifacts/
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Terraform state and local variable files can contain secrets
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.example.tfvars
+.terraform.lock.hcl.bak
+
+.env
+*.pem

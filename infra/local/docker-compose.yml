@@ -1,0 +1,53 @@
+# Integrated test stack used before any AWS deployment, locally and in the
+# GitHub Actions E2E job: PostgreSQL 16 (same engine as RDS), the FastAPI
+# backend and Nginx serving the production React build on one origin.
+name: fault-register
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: faults
+      POSTGRES_PASSWORD: faults
+      POSTGRES_DB: faults
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "faults"]
+      interval: 2s
+      retries: 20
+
+  api:
+    build:
+      context: ../../code
+      dockerfile: ../infra/local/api.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://faults:faults@db:5432/faults
+      RELEASE_ID: ${RELEASE_ID:-local}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: nginx:1.28-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ../../.artifacts/dist:/opt/fault-register/current/dist:ro
+      - ../nginx/fault-register.conf:/etc/nginx/templates/site.conf:ro
+    # The EC2 config proxies to 127.0.0.1; inside Compose the backend is the
+    # "api" service, so only that address is swapped when the file is loaded.
+    # Docker's resolver lets Nginx find the api container again after a restart.
+    command:
+      - sh
+      - -c
+      - |
+        sed -e 's#http://127.0.0.1:8000#http://$$api_upstream#' \
+            -e 's#server_name _;#server_name _; resolver 127.0.0.11 valid=5s; set $$api_upstream api:8000;#' \
+            /etc/nginx/templates/site.conf > /etc/nginx/conf.d/default.conf
+        nginx -t && exec nginx -g 'daemon off;'
+    depends_on:
+      - api
+
+volumes:
+  dbdata:
