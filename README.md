@@ -64,7 +64,7 @@ reload, run the API with `uvicorn app.main:app --port 8000` from `code/` and sta
 
 ## Tests and checks
 
-API tests need a PostgreSQL database; by default they use `localhost:55432`.
+### API tests and linting
 
 ```bash
 docker run -d --rm --name efr-testdb -e POSTGRES_USER=faults -e POSTGRES_PASSWORD=faults \
@@ -76,7 +76,7 @@ cd code
 npx eslint .
 ```
 
-Browser end-to-end tests run against the Docker Compose stack:
+### Browser tests
 
 ```bash
 cd code
