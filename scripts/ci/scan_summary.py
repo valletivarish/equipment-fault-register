@@ -10,14 +10,18 @@ when the report breaks that tool's gate, which fails the CI job.
 import json
 import os
 import sys
-import xml.etree.ElementTree as ET  # noqa: S405  (parses our own pytest report)
 from collections import Counter
 
 SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
 
 
 def pytest_report(path):
-    suite = ET.parse(path).getroot()  # noqa: S314
+    # defusedxml refuses external entities and entity-expansion bombs, which the
+    # standard library parser does not fully guard against. Only the backend
+    # job installs it, so it is imported here rather than at the top.
+    from defusedxml import ElementTree
+
+    suite = ElementTree.parse(path).getroot()
     suite = suite if suite.tag == "testsuite" else suite.find("testsuite")
     total = int(suite.get("tests"))
     failed = int(suite.get("failures")) + int(suite.get("errors"))

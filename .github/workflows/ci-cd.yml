@@ -44,7 +44,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install dependencies
-        run: pip install -r code/requirements-dev.txt
+        run: pip install -r code/requirements-dev.txt defusedxml==0.7.1
       - name: Static analysis (Ruff)
         working-directory: code
         run: |
