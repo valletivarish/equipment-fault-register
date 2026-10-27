@@ -7,6 +7,7 @@ const COLUMNS = [
   ['equipment_name', 'Equipment'],
   ['location', 'Location'],
   ['reported_date', 'Reported'],
+  ['priority', 'Priority'],
   ['repair_status', 'Status'],
 ]
 
@@ -82,6 +83,7 @@ export default function FaultTable({
                 <td>{fault.equipment_name}</td>
                 <td className="muted">{fault.location}</td>
                 <td className="date">{formatDate(fault.reported_date, true)}</td>
+                <td className={`priority-${fault.priority.toLowerCase()}`}>{fault.priority}</td>
                 <td><StatusMark status={fault.repair_status} /></td>
               </tr>
             )

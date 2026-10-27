@@ -60,4 +60,6 @@ export const api = {
 
 export const PAGE_SIZE = 10
 
+export const PRIORITIES = ['Low', 'Medium', 'High']
+
 export const STATUSES = ['Open', 'In progress', 'Waiting for parts', 'Fixed', 'Not repairable']

@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+Priority = Literal["Low", "Medium", "High"]
 RepairStatus = Literal["Open", "In progress", "Waiting for parts", "Fixed", "Not repairable"]
 
 
@@ -14,6 +15,7 @@ class FaultIn(BaseModel):
     fault_description: str = Field(min_length=5, max_length=1000)
     reported_date: date
     repair_status: RepairStatus = "Open"
+    priority: Priority = "Medium"
 
     @field_validator("asset_tag", "equipment_name", "location", "fault_description", mode="before")
     @classmethod

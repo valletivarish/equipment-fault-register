@@ -15,6 +15,7 @@ class EquipmentFault(Base):
             "'Fixed', 'Not repairable')",
             name="ck_repair_status",
         ),
+        CheckConstraint("priority IN ('Low', 'Medium', 'High')", name="ck_priority"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -24,6 +25,7 @@ class EquipmentFault(Base):
     fault_description: Mapped[str] = mapped_column(Text)
     reported_date: Mapped[date] = mapped_column(Date)
     repair_status: Mapped[str] = mapped_column(String(20), default="Open")
+    priority: Mapped[str] = mapped_column(String(10), default="Medium")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

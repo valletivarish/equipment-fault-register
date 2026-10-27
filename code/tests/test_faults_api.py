@@ -199,3 +199,22 @@ def test_pagination_splits_results(client):
     assert len(last["items"]) == 2
     assert beyond["items"] == []
     assert client.get("/api/faults", params={"page_size": 51}).status_code == 422
+
+
+def test_priority_defaults_to_medium(client):
+    fault = create(client)
+    assert fault["priority"] == "Medium"
+    changed = client.put(f"/api/faults/{fault['id']}", json={**VALID, "priority": "High"})
+    assert changed.json()["priority"] == "High"
+
+
+def test_rejects_unknown_priority(client):
+    assert client.post("/api/faults", json={**VALID, "priority": "Urgent"}).status_code == 422
+
+
+def test_sort_by_priority_uses_urgency(client):
+    for level in ["Medium", "High", "Low"]:
+        create(client, equipment_name=level, priority=level)
+    params = {"sort": "priority", "order": "desc"}
+    names = [f["priority"] for f in client.get("/api/faults", params=params).json()["items"]]
+    assert names == ["High", "Medium", "Low"]

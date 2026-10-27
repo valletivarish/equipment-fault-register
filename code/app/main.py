@@ -6,7 +6,7 @@ from datetime import date
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response
-from sqlalchemy import func, select, text
+from sqlalchemy import case, func, select, text
 from sqlalchemy.orm import Session
 
 from app.db import get_session
@@ -47,6 +47,8 @@ SORT_COLUMNS = {
     "equipment_name": EquipmentFault.equipment_name,
     "location": EquipmentFault.location,
     "repair_status": EquipmentFault.repair_status,
+    # Sorted by urgency (Low < Medium < High) rather than alphabetically.
+    "priority": case({"Low": 1, "Medium": 2, "High": 3}, value=EquipmentFault.priority),
 }
 CLOSED_STATUSES = ("Fixed", "Not repairable")
 

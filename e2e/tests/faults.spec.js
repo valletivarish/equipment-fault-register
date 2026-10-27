@@ -68,6 +68,7 @@ test('report, read, edit and delete a fault through the UI @smoke', async ({ pag
     await page.getByLabel('Equipment', { exact: true }).fill(FAULT.name)
     await page.getByLabel('Location').fill(FAULT.location)
     await page.getByLabel('What is wrong').fill(FAULT.description)
+    await page.getByLabel('Priority').selectOption('High')
     await page.getByLabel('Reported on').fill(FAULT.date)
     await page.getByRole('button', { name: 'Report fault' }).click()
 
@@ -79,6 +80,7 @@ test('report, read, edit and delete a fault through the UI @smoke', async ({ pag
     const row = page.getByRole('row', { name: new RegExp(FAULT.tag) })
     await expect(row).toContainText('Open')
     await expect(row).toContainText(FAULT.location)
+    await expect(row).toContainText('High')
   })
 
   await test.step('read back after a browser reload', async () => {

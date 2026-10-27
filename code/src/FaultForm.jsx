@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, STATUSES } from './api.js'
+import { api, PRIORITIES, STATUSES } from './api.js'
 
 // en-CA gives YYYY-MM-DD in local time, the format a date input expects.
 const today = () => new Date().toLocaleDateString('en-CA')
@@ -11,6 +11,7 @@ const empty = () => ({
   fault_description: '',
   reported_date: today(),
   repair_status: 'Open',
+  priority: 'Medium',
 })
 
 // Used for both report (no id) and edit. Browser constraints catch the obvious
@@ -30,9 +31,9 @@ export default function FaultForm({ onSaved }) {
     api.get(id)
       .then((fault) => {
         const { asset_tag, equipment_name, location, fault_description, reported_date,
-          repair_status } = fault
+          repair_status, priority } = fault
         setValues({ asset_tag, equipment_name, location, fault_description, reported_date,
-          repair_status })
+          repair_status, priority })
       })
       .catch((e) => setFormError(e.message))
       .finally(() => setLoading(false))
@@ -106,6 +107,13 @@ export default function FaultForm({ onSaved }) {
           </select>
         </Field>
       </div>
+
+      <Field label="Priority" name="priority" error={fieldErrors.priority}
+        hint="High means the equipment is unsafe or blocks other work">
+        <select id="priority" name="priority" value={values.priority} onChange={change}>
+          {PRIORITIES.map((p) => <option key={p}>{p}</option>)}
+        </select>
+      </Field>
 
       <div className="actions">
         <button type="submit" className="button primary" disabled={saving}>

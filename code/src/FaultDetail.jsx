@@ -66,6 +66,8 @@ export function FaultDetail({ onDeleted }) {
       <dl className="facts">
         <dt>Status</dt>
         <dd><StatusMark status={fault.repair_status} /></dd>
+        <dt>Priority</dt>
+        <dd className={`priority-${fault.priority.toLowerCase()}`}>{fault.priority}</dd>
         <dt>Location</dt>
         <dd>{fault.location}</dd>
         <dt>Reported</dt>

@@ -120,6 +120,8 @@ a { color: inherit; }
 .pager .button { height: 32px; }
 .pager .button:disabled { opacity: 0.45; cursor: default; }
 .muted { color: var(--muted); }
+.priority-high { color: var(--danger); font-weight: 700; }
+.priority-low { color: var(--muted); }
 
 .filters {
   display: flex;
