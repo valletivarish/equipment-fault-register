@@ -29,6 +29,8 @@ env:
   NODE_VERSION: "22"
   TERRAFORM_VERSION: "1.15.8"
   AWS_REGION: us-west-2
+  # Not a secret: used only to stop a deploy if the credentials belong to another account.
+  EXPECTED_AWS_ACCOUNT_ID: "257383311061"
   SUMMARY: python3 scripts/ci/scan_summary.py
 
 jobs:
@@ -280,10 +282,11 @@ jobs:
   deploy:
     name: "CD: deploy to AWS"
     needs: [backend-tests, frontend-build, security-scan, terraform-validate, e2e-tests]
-    # Only main deploys (a push, or a manual run after a lab restart), and only
-    # once AWS credentials are configured. Pull requests never deploy.
+    # Only main deploys (a push, or a manual run after a lab restart).
+    # Pull requests never deploy. While the lab is stopped the session token
+    # has expired, so this job fails at the account check and changes nothing.
     if: >-
-      github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true' &&
+      github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -301,7 +304,7 @@ jobs:
       - name: Check the target AWS account
         run: |
           actual=$(aws sts get-caller-identity --query Account --output text)
-          if [ "$actual" != "${{ vars.AWS_ACCOUNT_ID }}" ]; then
+          if [ "$actual" != "$EXPECTED_AWS_ACCOUNT_ID" ]; then
             echo "Credentials belong to a different AWS account; stopping before any change."
             exit 1
           fi
@@ -314,7 +317,7 @@ jobs:
         working-directory: infra/terraform
         run: |
           terraform init -input=false \
-            -backend-config="bucket=fault-register-tfstate-${{ vars.AWS_ACCOUNT_ID }}" \
+            -backend-config="bucket=fault-register-tfstate-$EXPECTED_AWS_ACCOUNT_ID" \
             -backend-config="region=$AWS_REGION"
           terraform apply -auto-approve -input=false
           echo "INSTANCE_ID=$(terraform output -raw instance_id)" >> $GITHUB_ENV
