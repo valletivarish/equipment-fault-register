@@ -43,18 +43,18 @@ resource "aws_eip_association" "web" {
   allocation_id = aws_eip.web.id
 }
 
-resource "random_id" "bucket_suffix" {
-  byte_length = 3
-}
+data "aws_caller_identity" "current" {}
 
-# Release bundles uploaded by the CD job and pulled by EC2 through SSM.
-resource "aws_s3_bucket" "releases" {
-  bucket        = "fault-register-releases-${random_id.bucket_suffix.hex}"
-  force_destroy = true
+# Release bundles uploaded by the CD job and pulled by EC2 through SSM. The
+# bucket itself is created by scripts/bootstrap-state.sh: the AWS Academy
+# account policy denies s3:GetBucketObjectLockConfiguration, which Terraform's
+# aws_s3_bucket resource always reads. Its settings are still managed here.
+locals {
+  release_bucket = "fault-register-releases-${data.aws_caller_identity.current.account_id}"
 }
 
 resource "aws_s3_bucket_public_access_block" "releases" {
-  bucket                  = aws_s3_bucket.releases.id
+  bucket                  = local.release_bucket
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -66,7 +66,7 @@ resource "aws_s3_bucket_public_access_block" "releases" {
 # and key-policy management for no real gain in this risk profile.
 #trivy:ignore:AWS-0132
 resource "aws_s3_bucket_server_side_encryption_configuration" "releases" {
-  bucket = aws_s3_bucket.releases.id
+  bucket = local.release_bucket
 
   rule {
     apply_server_side_encryption_by_default {
@@ -76,7 +76,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "releases" {
 }
 
 resource "aws_s3_bucket_versioning" "releases" {
-  bucket = aws_s3_bucket.releases.id
+  bucket = local.release_bucket
 
   versioning_configuration {
     status = "Enabled"
@@ -86,7 +86,7 @@ resource "aws_s3_bucket_versioning" "releases" {
 # Old release bundles are deleted after 30 days so storage does not grow with
 # every push; recent ones stay available for rollback.
 resource "aws_s3_bucket_lifecycle_configuration" "releases" {
-  bucket = aws_s3_bucket.releases.id
+  bucket = local.release_bucket
 
   rule {
     id     = "expire-old-releases"

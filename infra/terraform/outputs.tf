@@ -7,7 +7,7 @@ output "instance_id" {
 }
 
 output "release_bucket" {
-  value = aws_s3_bucket.releases.bucket
+  value = local.release_bucket
 }
 
 output "db_endpoint" {
