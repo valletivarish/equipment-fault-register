@@ -1,11 +1,4 @@
-"""Turn a test or scan report into a short table for the GitHub Actions run.
-
-Usage: scan_summary.py <tool> <report-file> <tool-version>
-
-The table is printed to the job log and appended to $GITHUB_STEP_SUMMARY, so
-every check appears on the run's Summary page. The script exits with status 1
-when the report breaks that tool's gate, which fails the CI job.
-"""
+# Turns a scan or test report into a Summary-page table; exits 1 when the tool's gate fails.
 
 import json
 import os

@@ -1,8 +1,4 @@
-"""Rename repair statuses to plainer words.
-
-Revision ID: 0004
-Revises: 0003
-"""
+# Rename repair statuses to plainer words.
 
 from alembic import op
 

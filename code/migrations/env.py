@@ -1,5 +1,4 @@
-"""Uses the API's DATABASE_URL; the deploy script runs `alembic upgrade head`
-on EC2 before switching releases, so schema changes reach RDS via the pipeline."""
+# Runs on EC2 during each deploy, so schema changes reach RDS through the pipeline.
 
 from alembic import context
 

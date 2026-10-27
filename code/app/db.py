@@ -1,8 +1,4 @@
-"""DATABASE_URL points at local PostgreSQL, the CI container or Amazon RDS.
-
-On EC2 the deploy script builds it from the RDS endpoint and the password held
-in SSM Parameter Store, so no credential is stored in the repository.
-"""
+# DATABASE_URL points at local PostgreSQL, CI or RDS; on EC2 the password comes from SSM.
 
 import os
 

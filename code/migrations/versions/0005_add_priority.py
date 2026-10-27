@@ -1,8 +1,4 @@
-"""Add a priority to each fault.
-
-Revision ID: 0005
-Revises: 0004
-"""
+# Add a priority to each fault.
 
 import sqlalchemy as sa
 from alembic import op

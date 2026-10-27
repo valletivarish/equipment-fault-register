@@ -1,8 +1,4 @@
-"""Create the equipment_faults table.
-
-Revision ID: 0001
-Revises:
-"""
+# Create the equipment_faults table.
 
 import sqlalchemy as sa
 from alembic import op

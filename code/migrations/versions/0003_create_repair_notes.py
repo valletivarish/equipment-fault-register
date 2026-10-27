@@ -1,8 +1,4 @@
-"""Create the repair_notes table.
-
-Revision ID: 0003
-Revises: 0002
-"""
+# Create the repair_notes table.
 
 import sqlalchemy as sa
 from alembic import op

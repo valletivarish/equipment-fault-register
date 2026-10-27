@@ -1,5 +1,4 @@
-"""Routes live under /api so Nginx can serve React at / and proxy only /api/
-to this process on 127.0.0.1:8000: one origin, no CORS needed."""
+# Routes sit under /api so Nginx serves React at / and proxies only /api/ here.
 
 import os
 from datetime import date
@@ -27,12 +26,9 @@ def find_fault(fault_id: int, session: Session) -> EquipmentFault:
     return fault
 
 
+# Queries the database so a broken RDS connection reports unhealthy.
 @app.get("/api/health")
 def health(session: Session = Depends(get_session)):
-    """Queries the database so a broken RDS connection reports unhealthy.
-
-    Used by the CD smoke test, the rollback script and monitoring.
-    """
     try:
         session.execute(text("SELECT 1"))
     except Exception:
@@ -134,8 +130,8 @@ def delete_fault(fault_id: int, session: Session = Depends(get_session)):
     return Response(status_code=204)
 
 
+# Repair work cannot be logged before the fault was reported or in the future.
 def check_note_date(note_date: date, fault: EquipmentFault):
-    """Repair work cannot be logged before the fault was reported or in the future."""
     if note_date > date.today() or note_date < fault.reported_date:
         # Same shape as FastAPI's own validation errors, so the form shows it per field.
         message = f"Use a date between {fault.reported_date.isoformat()} and today"

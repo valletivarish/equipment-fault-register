@@ -1,12 +1,4 @@
-"""Print a Markdown row of timings for GitHub Actions runs, for the CI/CD
-optimisation experiment. Uses the gh CLI, so it reads the private repository
-with the developer's own login.
-
-Usage: run_timings.py <run-id> [<run-id> ...]
-
-Queue time (created -> first job started) is reported separately from the
-time jobs actually ran, so a busy runner pool does not look like slower work.
-"""
+# Prints run timings for the CI optimisation experiment; queue time is kept apart from job time.
 
 import json
 import subprocess
@@ -15,7 +7,13 @@ from datetime import datetime
 
 
 def gh_api(path):
-    output = subprocess.run(["gh", "api", path], check=True, capture_output=True, text=True)
+    # Fixed gh CLI commands; the only argument is a run ID typed by the developer.
+    output = subprocess.run(  # noqa: S603
+        ["gh", "api", path],  # noqa: S607
+        check=True,
+        capture_output=True,
+        text=True,  # noqa: S607
+    )
     return json.loads(output.stdout)
 
 
@@ -31,7 +29,10 @@ def row(repo, run_id):
     first_start = min(j["started_at"] for j in ran)
     last_end = max(j["completed_at"] for j in ran)
     job_minutes = sum(seconds(j["started_at"], j["completed_at"]) for j in ran) / 60
-    per_job = {j["name"].split(": ", 1)[-1]: round(seconds(j["started_at"], j["completed_at"])) for j in ran}
+    per_job = {
+        j["name"].split(": ", 1)[-1]: round(seconds(j["started_at"], j["completed_at"]))
+        for j in ran
+    }
     return {
         "run": run_id,
         "event": run["event"],
@@ -48,8 +49,10 @@ def row(repo, run_id):
 
 def main():
     repo = subprocess.run(
-        ["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
-        check=True, capture_output=True, text=True,
+        ["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],  # noqa: S607
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout.strip()
     rows = [row(repo, run_id) for run_id in sys.argv[1:]]
     print(json.dumps(rows, indent=2))

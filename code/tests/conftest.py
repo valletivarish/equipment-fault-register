@@ -1,4 +1,4 @@
-"""Tests use real PostgreSQL (same engine as RDS), emptied before each test."""
+# Tests use real PostgreSQL (same engine as RDS), emptied before each test.
 
 import pytest
 from fastapi.testclient import TestClient

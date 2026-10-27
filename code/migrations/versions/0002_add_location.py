@@ -1,8 +1,4 @@
-"""Add the workshop location of each fault.
-
-Revision ID: 0002
-Revises: 0001
-"""
+# Add the workshop location of each fault.
 
 import sqlalchemy as sa
 from alembic import op
