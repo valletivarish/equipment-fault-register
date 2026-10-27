@@ -14,6 +14,8 @@ activate_release() {
   nginx -t
   ln -sfn "$release_dir" "$APP_DIR/current"
   systemctl daemon-reload
+  # Enabled so the API comes back by itself when the lab restarts the instance.
+  systemctl enable fault-register
   systemctl restart fault-register
   systemctl enable --now fault-register-health.timer
   systemctl enable nginx
