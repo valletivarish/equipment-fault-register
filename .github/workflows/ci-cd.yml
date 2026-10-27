@@ -333,6 +333,10 @@ jobs:
           echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
           mkdir -p bundle/backend bundle/infra
           cp -r code/app code/migrations code/alembic.ini code/requirements.txt bundle/backend/
+          # EC2 has no internet access, so the exact wheels for its Python 3.12
+          # (x86_64 Linux) travel inside the release bundle.
+          pip download --quiet --only-binary=:all: --platform manylinux2014_x86_64 \
+            --python-version 3.12 --implementation cp -r code/requirements.txt -d bundle/wheels
           cp -r .artifacts/dist bundle/dist
           cp -r scripts bundle/scripts
           cp -r infra/nginx infra/systemd bundle/infra/

@@ -69,18 +69,26 @@ resource "aws_vpc_security_group_ingress_rule" "web_http" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
-# Outbound traffic is limited to HTTPS: dnf repositories, PyPI and the S3, SSM
-# and CloudWatch APIs. Those AWS endpoints have no fixed address range, and
-# VPC interface endpoints would add an hourly charge per service, so the
-# destination stays open while the port is restricted.
-#trivy:ignore:AWS-0104
-resource "aws_vpc_security_group_egress_rule" "web_https" {
+# The web server has no route to the open internet on any port. It reaches S3
+# (release bundles and the Amazon Linux package repositories, which are hosted
+# in S3) through the free gateway endpoint, and SSM, Parameter Store and
+# CloudWatch through interface endpoints inside the VPC.
+resource "aws_vpc_security_group_egress_rule" "web_to_s3" {
   security_group_id = aws_security_group.web.id
-  description       = "HTTPS to package mirrors and AWS APIs"
+  description       = "HTTPS to S3 through the gateway endpoint"
   ip_protocol       = "tcp"
   from_port         = 443
   to_port           = 443
-  cidr_ipv4         = "0.0.0.0/0"
+  prefix_list_id    = aws_vpc_endpoint.s3.prefix_list_id
+}
+
+resource "aws_vpc_security_group_egress_rule" "web_to_endpoints" {
+  security_group_id            = aws_security_group.web.id
+  description                  = "HTTPS to the SSM and CloudWatch interface endpoints"
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+  referenced_security_group_id = aws_security_group.endpoints.id
 }
 
 resource "aws_vpc_security_group_egress_rule" "web_to_db" {
@@ -99,4 +107,38 @@ resource "aws_vpc_security_group_ingress_rule" "db_from_web" {
   from_port                    = 5432
   to_port                      = 5432
   referenced_security_group_id = aws_security_group.web.id
+}
+
+resource "aws_security_group" "endpoints" {
+  name        = "fault-register-endpoints"
+  description = "Interface endpoints reachable only from the web server"
+  vpc_id      = aws_vpc.main.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "endpoints_from_web" {
+  security_group_id            = aws_security_group.endpoints.id
+  description                  = "HTTPS from the EC2 backend"
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+  referenced_security_group_id = aws_security_group.web.id
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.public.id]
+}
+
+# One subnet only: each interface endpoint is billed per AZ per hour, and the
+# single web server lives in one AZ.
+resource "aws_vpc_endpoint" "interface" {
+  for_each            = toset(["ssm", "ssmmessages", "ec2messages", "monitoring"])
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.region}.${each.key}"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [aws_subnet.public.id]
+  security_group_ids  = [aws_security_group.endpoints.id]
+  private_dns_enabled = true
 }

@@ -16,7 +16,7 @@ tests, static code analysis and security scans before every deployment.
 | Frontend | React 19, React Router, Vite |
 | Database | PostgreSQL 16 (Amazon RDS in AWS, Docker locally) |
 | Web server | Nginx serving the React build and proxying `/api/` to FastAPI |
-| Infrastructure | Terraform (VPC, EC2 with Elastic IP, RDS, S3, SSM, CloudWatch) |
+| Infrastructure | Terraform (VPC with S3/SSM/CloudWatch endpoints, EC2 with Elastic IP, RDS, S3, CloudWatch) |
 | CI/CD | GitHub Actions, one workflow with separate CI and CD stages |
 | Testing | pytest (API), Playwright (browser end-to-end) |
 
@@ -96,7 +96,11 @@ RESTART_API_CMD="docker compose -f ../infra/local/docker-compose.yml restart api
 ## Deployment
 
 Pushing to `main` runs the full pipeline. The CD stage starts only after every CI job has
-passed. It uploads the tested release to S3, and AWS Systems Manager installs it on the EC2
-instance: the backend is installed, Alembic migrations run against RDS, the release is switched
+passed. It uploads the tested release, including the Python wheels it needs, to S3, and AWS
+Systems Manager installs it on the EC2 instance: the backend is installed, Alembic migrations run against RDS, the release is switched
 and Nginx is reloaded. A failed health check restores the previous release automatically.
 See `infra/terraform/` for the AWS resources and `scripts/` for the release and rollback steps.
+
+The EC2 instance has no outbound internet access: it reaches S3 (release bundles and Amazon
+Linux packages) through a gateway endpoint and SSM, Parameter Store and CloudWatch through
+interface endpoints, and installs Python packages only from the wheels in the release bundle.

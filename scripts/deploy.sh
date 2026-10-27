@@ -37,13 +37,15 @@ SQL
 
 echo "== Python environment"
 # Virtualenvs are keyed by the requirements hash, so a release that does not
-# change dependencies reuses the existing one instead of downloading again.
-PYTHON=$(command -v python3.12 || command -v python3.11)
+# change dependencies reuses the existing one. Packages come from the wheels
+# shipped in the bundle: the instance has no route to PyPI.
+PYTHON=$(command -v python3.12)
 REQ_HASH=$(sha256sum "$NEW/backend/requirements.txt" | cut -c1-12)
 VENV="$APP_DIR/venvs/$REQ_HASH"
 if [ ! -x "$VENV/bin/uvicorn" ]; then
   "$PYTHON" -m venv "$VENV"
-  "$VENV/bin/pip" install --quiet --no-cache-dir -r "$NEW/backend/requirements.txt"
+  "$VENV/bin/pip" install --quiet --no-index --find-links "$NEW/wheels" \
+    -r "$NEW/backend/requirements.txt"
 fi
 ln -sfn "$VENV" "$NEW/venv"
 
