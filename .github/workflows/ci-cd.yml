@@ -128,8 +128,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # gitleaks scans the whole history, not only the last commit
-      # No pip cache here: restoring it took up to 15 s, longer than installing
-      # the three scanners from PyPI.
+      # No pip cache here: its restore time varied from 2 s to 15 s and saved
+      # nothing on average, while a direct install takes a steady 16-18 s.
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
