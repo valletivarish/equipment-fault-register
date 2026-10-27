@@ -16,3 +16,6 @@ __pycache__/
 
 .env
 *.pem
+
+# Evidence, screenshots and working notes stay local (used for the report, not shipped)
+docs/

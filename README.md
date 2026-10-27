@@ -29,7 +29,7 @@ code/                application source: FastAPI backend (app/, migrations/, tes
 e2e/                 Playwright browser tests for the whole application
 infra/               Terraform, Nginx configuration and the local Docker Compose stack
 scripts/             deployment and rollback scripts
-docs/                UI plan, evidence, experiments and verification records
+docs/                local working notes and evidence (not tracked in git)
 ```
 
 ## Data model
