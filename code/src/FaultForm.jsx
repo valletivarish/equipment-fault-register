@@ -14,8 +14,10 @@ const empty = () => ({
   priority: 'Medium',
 })
 
-// Used for both report (no id) and edit. Browser constraints catch the obvious
-// mistakes; the API re-checks everything and its messages appear per field.
+// Used for both report (no id) and edit. Browser validation is switched off
+// (noValidate) so every rule is checked by the API and its message appears
+// under the field, the same in every browser. The input attributes stay as
+// hints for assistive technology and mobile keyboards.
 export default function FaultForm({ onSaved }) {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -65,7 +67,7 @@ export default function FaultForm({ onSaved }) {
   const cancelTo = editing ? `/faults/${id}` : '/'
 
   return (
-    <form className="fault-form" onSubmit={submit}>
+    <form className="fault-form" onSubmit={submit} noValidate>
       <Link to={cancelTo} className={editing ? 'back' : 'back narrow-only'}>{editing ? 'Back to fault' : 'Back to register'}</Link>
       <h2>{editing ? 'Edit fault' : 'Report fault'}</h2>
 

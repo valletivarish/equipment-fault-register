@@ -32,9 +32,16 @@ async function request(path, options = {}) {
   return body
 }
 
-// Pydantic's pattern message shows a regex, which means nothing to a user.
+// Pydantic's messages are written for developers; these say the same in plain words.
 function friendlyMessage(message) {
   if (message.includes('should match pattern')) return 'Use only letters, numbers and dashes.'
+  const atLeast = message.match(/at least (\d+) character/)
+  if (atLeast) return `Enter at least ${atLeast[1]} characters.`
+  const atMost = message.match(/at most (\d+) character/)
+  if (atMost) return `Use at most ${atMost[1]} characters.`
+  if (message.includes('valid date')) return 'Enter a valid date.'
+  if (message.startsWith('Input should be')) return 'Choose one of the listed options.'
+  if (message === 'Field required') return 'This field is required.'
   return message.replace(/^Value error, /, '')
 }
 

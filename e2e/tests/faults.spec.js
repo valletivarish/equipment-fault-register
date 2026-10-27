@@ -27,7 +27,12 @@ async function removeTestRecords(request) {
 // Catches JS errors and failed requests so a false success cannot pass.
 function watchForProblems(page) {
   const problems = []
-  page.on('console', (msg) => msg.type() === 'error' && problems.push(`console: ${msg.text()}`))
+  page.on('console', (msg) => {
+    // A 422 is the API rejecting invalid input on purpose; anything else is a problem.
+    if (msg.type() === 'error' && !msg.text().includes('status of 422')) {
+      problems.push(`console: ${msg.text()}`)
+    }
+  })
   page.on('pageerror', (err) => problems.push(`page error: ${err.message}`))
   page.on('requestfailed', (req) => problems.push(`failed request: ${req.url()}`))
   return problems
@@ -137,32 +142,38 @@ test('report, read, edit and delete a fault through the UI @smoke', async ({ pag
   expect(problems).toEqual([])
 })
 
-test('invalid input is rejected and nothing is saved', async ({ page, request }) => {
+test('invalid input shows a message under each field and nothing is saved', async ({ page, request }) => {
   const countTestRecords = async () => (await testRecords(request)).length
   const before = await countTestRecords()
+  const errorFor = (field) => page.locator(`#${field}-error`)
 
   await page.goto('/faults/new')
   const submit = page.getByRole('button', { name: 'Report fault' })
 
-  await submit.click()
-  await expect(page).toHaveURL(/\/faults\/new$/)
-  await expect(page.getByLabel('Asset tag')).toHaveJSProperty('validity.valueMissing', true)
+  await test.step('empty form', async () => {
+    await submit.click()
+    await expect(page).toHaveURL(/\/faults\/new$/)
+    await expect(page.getByRole('alert')).toHaveText('Some fields need fixing.')
+    await expect(errorFor('asset_tag')).toHaveText('Enter at least 2 characters.')
+    await expect(errorFor('equipment_name')).toHaveText('Enter at least 2 characters.')
+    await expect(errorFor('location')).toHaveText('Enter at least 2 characters.')
+    await expect(errorFor('fault_description')).toHaveText('Enter at least 5 characters.')
+  })
 
-  await page.getByLabel('Asset tag').fill('WS 04!')
-  await expect(page.getByLabel('Asset tag')).toHaveJSProperty('validity.patternMismatch', true)
-  await page.getByLabel('Reported on').fill('2099-01-01')
-  await expect(page.getByLabel('Reported on')).toHaveJSProperty('validity.rangeOverflow', true)
-
-  // Spaces pass the browser check; the API trims and rejects them.
-  await page.getByLabel('Asset tag').fill(`${TAG}-X`)
-  await page.getByLabel('Equipment', { exact: true }).fill('   ')
-  await page.getByLabel('Location').fill('Wood bay')
-  await page.getByLabel('What is wrong').fill('Motor hums but does not start')
-  await page.getByLabel('Reported on').fill('2026-10-20')
-  await submit.click()
-  await expect(page.getByRole('alert')).toHaveText('Some fields need fixing.')
-  await expect(page.locator('#equipment_name-error')).toContainText('at least 2 characters')
-  await expect(page.getByLabel('What is wrong')).toHaveValue('Motor hums but does not start')
+  await test.step('malformed tag, spaces only and a future date', async () => {
+    await page.getByLabel('Asset tag').fill('WS 04!')
+    await page.getByLabel('Equipment', { exact: true }).fill('   ')
+    await page.getByLabel('Location').fill('Wood bay')
+    await page.getByLabel('What is wrong').fill('Motor hums but does not start')
+    await page.getByLabel('Reported on').fill('2099-01-01')
+    await submit.click()
+    await expect(errorFor('asset_tag')).toHaveText('Use only letters, numbers and dashes.')
+    await expect(errorFor('equipment_name')).toHaveText('Enter at least 2 characters.')
+    await expect(errorFor('reported_date')).toHaveText('Reported date cannot be in the future')
+    await expect(errorFor('location')).toHaveCount(0)
+    // Typed values are kept so the user only fixes what is wrong.
+    await expect(page.getByLabel('What is wrong')).toHaveValue('Motor hums but does not start')
+  })
 
   expect(await countTestRecords()).toBe(before)
 })
@@ -247,7 +258,10 @@ test('repair notes can be added, edited and deleted @smoke', async ({ page, requ
 
   await test.step('a date before the fault was reported is rejected', async () => {
     await log.getByLabel('Date').first().fill('2026-10-01')
-    await expect(log.getByLabel('Date').first()).toHaveJSProperty('validity.rangeUnderflow', true)
+    await log.getByLabel('Work done').first().fill('Too early')
+    await log.getByRole('button', { name: 'Add note' }).click()
+    await expect(log.getByText('Use a date between 2026-10-20 and today')).toBeVisible()
+    await expect(log.getByText('Too early', { exact: true })).toHaveCount(0)
   })
 
   await test.step('edit', async () => {

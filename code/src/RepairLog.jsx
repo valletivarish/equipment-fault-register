@@ -114,7 +114,7 @@ function NoteForm({ initial, minDate, submitLabel, onSave, onCancel }) {
   }
 
   return (
-    <form className="note-form" onSubmit={submit} aria-label={submitLabel}>
+    <form className="note-form" onSubmit={submit} aria-label={submitLabel} noValidate>
       <div className="note-form-row">
         <label>
           <span>Date</span>
