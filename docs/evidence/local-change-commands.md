@@ -39,4 +39,10 @@ curl http://<elastic-ip>/api/health
 
 ## Result
 
-Recorded after the run: commit, workflow run, deployed release and after-change screenshots.
+| Item | Value |
+| --- | --- |
+| Commit | `9318d3f` "Add a priority to each fault" |
+| Workflow run | 40483467970: all five CI jobs and the CD job passed |
+| Deployed release | `/api/health` returned `"release":"9318d3f51309"` after the run |
+| Database | migration 0005 ran on RDS; existing faults show Medium |
+| Screenshots | before: `aws-01..03`; after: `aws-04-form-after-priority.png`, `aws-05-detail-after-priority.png`, `aws-06-register-after-priority-sorted.png` |
