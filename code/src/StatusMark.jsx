@@ -19,3 +19,10 @@ export function formatDate(isoDate, short = false) {
     timeZone: 'UTC',
   })
 }
+
+// Closed faults have no count, so they show a dash instead of a misleading zero.
+// eslint-disable-next-line react-refresh/only-export-components
+export function daysLabel(days) {
+  if (days === null || days === undefined) return '–'
+  return days === 1 ? '1 day' : `${days} days`
+}

@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 Priority = Literal["Low", "Medium", "High"]
 RepairStatus = Literal["Open", "In progress", "Waiting for parts", "Fixed", "Not repairable"]
@@ -42,6 +42,14 @@ class FaultOut(FaultIn):
     id: int
     created_at: datetime
     updated_at: datetime
+
+    # Worked out on each request so it never goes stale in the database; None once closed.
+    @computed_field
+    @property
+    def days_open(self) -> int | None:
+        if self.repair_status in ("Fixed", "Not repairable"):
+            return None
+        return (date.today() - self.reported_date).days
 
 
 class FaultPage(BaseModel):
