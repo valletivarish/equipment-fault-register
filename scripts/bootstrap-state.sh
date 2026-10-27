@@ -2,15 +2,22 @@
 # Run once per AWS account before the first terraform init. Creates the private,
 # versioned S3 bucket that stores Terraform state for both the laptop and CI.
 set -euo pipefail
-REGION=${AWS_REGION:-us-east-1}
+REGION=${AWS_REGION:-us-west-2}
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 BUCKET="fault-register-tfstate-$ACCOUNT_ID"
 
-if ! aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
-  aws s3api create-bucket --bucket "$BUCKET" --region "$REGION"
+if ! aws s3api head-bucket --bucket "$BUCKET" --region "$REGION" 2>/dev/null; then
+  # Outside us-east-1, S3 needs the region named as a location constraint.
+  if [ "$REGION" = us-east-1 ]; then
+    aws s3api create-bucket --bucket "$BUCKET" --region "$REGION"
+  else
+    aws s3api create-bucket --bucket "$BUCKET" --region "$REGION" \
+      --create-bucket-configuration LocationConstraint="$REGION"
+  fi
 fi
-aws s3api put-bucket-versioning --bucket "$BUCKET" \
+aws s3api put-bucket-versioning --bucket "$BUCKET" --region "$REGION" \
   --versioning-configuration Status=Enabled
-aws s3api put-public-access-block --bucket "$BUCKET" --public-access-block-configuration \
+aws s3api put-public-access-block --bucket "$BUCKET" --region "$REGION" \
+  --public-access-block-configuration \
   BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
 echo "$BUCKET"

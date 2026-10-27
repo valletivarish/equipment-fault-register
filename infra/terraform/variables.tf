@@ -1,7 +1,9 @@
+# us-west-2 (Oregon) is chosen over us-east-1, the other region the Learner Lab
+# allows, because its grid has a much lower carbon intensity.
 variable "region" {
   description = "AWS region for every resource"
   type        = string
-  default     = "us-east-1"
+  default     = "us-west-2"
 }
 
 variable "instance_type" {

@@ -28,7 +28,7 @@ env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "22"
   TERRAFORM_VERSION: "1.15.8"
-  AWS_REGION: us-east-1
+  AWS_REGION: us-west-2
   SUMMARY: python3 scripts/ci/scan_summary.py
 
 jobs:
@@ -280,8 +280,11 @@ jobs:
   deploy:
     name: "CD: deploy to AWS"
     needs: [backend-tests, frontend-build, security-scan, terraform-validate, e2e-tests]
-    # Only a push to main deploys, and only once AWS credentials are configured.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    # Only main deploys (a push, or a manual run after a lab restart), and only
+    # once AWS credentials are configured. Pull requests never deploy.
+    if: >-
+      github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
