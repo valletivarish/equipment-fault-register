@@ -254,14 +254,14 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
       - name: Install Playwright
         working-directory: e2e
-        # On a cache hit only the system libraries are installed; the ~100 MB
-        # Chromium download is skipped.
+        # Only the headless shell is needed. On a cache hit nothing is
+        # downloaded and apt is skipped: the runner image already has the
+        # libraries Chromium needs (it ships Google Chrome), and a missing one
+        # would make the browser tests fail rather than pass silently.
         run: |
           npm ci
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
-            npx playwright install-deps chromium
-          else
-            npx playwright install --with-deps chromium
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install --with-deps --only-shell chromium
           fi
       - name: Run browser tests
         working-directory: e2e
@@ -360,11 +360,21 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Restore Playwright browser
+        id: playwright-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
       - name: Smoke test the deployed application
         working-directory: e2e
         run: |
           curl -fsS "$APP_URL/api/health" | grep -q "\"release\":\"$RELEASE_ID\""
           npm ci
-          npx playwright install --with-deps chromium
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install --with-deps --only-shell chromium
+          fi
           E2E_BASE_URL=$APP_URL npx playwright test --grep @smoke || true
           cd .. && $SUMMARY playwright .artifacts/e2e/e2e.json "post-deploy smoke"
