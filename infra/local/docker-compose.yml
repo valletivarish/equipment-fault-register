@@ -1,5 +1,5 @@
-# Pre-deployment test stack (local and CI E2E job): PostgreSQL 16, FastAPI and
-# Nginx with the same site config used on EC2.
+# Local stack that mirrors EC2: PostgreSQL 16, FastAPI and Nginx with the same
+# site config used on the server.
 name: fault-register
 
 services:
@@ -35,7 +35,7 @@ services:
       - ../../.artifacts/dist:/opt/fault-register/current/dist:ro
       - ../nginx/fault-register.conf:/etc/nginx/templates/site.conf:ro
     # Swap the EC2 loopback upstream for the "api" service; Docker's resolver
-    # lets Nginx find the container again after the E2E restart test.
+    # lets Nginx find the container again after it restarts.
     command:
       - sh
       - -c

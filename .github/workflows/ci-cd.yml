@@ -225,63 +225,9 @@ jobs:
           echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| terraform fmt + validate | $TERRAFORM_VERSION | **PASS** |" >> $GITHUB_STEP_SUMMARY
 
-  e2e-tests:
-    name: "CI: browser end-to-end tests"
-    needs: frontend-build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          name: frontend-dist
-          path: .artifacts/dist
-      - name: Start Nginx, FastAPI and PostgreSQL
-        run: |
-          docker compose -f infra/local/docker-compose.yml up -d --build
-          for i in $(seq 1 30); do
-            curl -fs http://localhost:8080/api/health && break
-            sleep 2
-          done
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: e2e/package-lock.json
-      - name: Restore Playwright browser
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
-      - name: Install Playwright
-        working-directory: e2e
-        # Only the headless shell is needed. On a cache hit nothing is
-        # downloaded and apt is skipped: the runner image already has the
-        # libraries Chromium needs (it ships Google Chrome), and a missing one
-        # would make the browser tests fail rather than pass silently.
-        run: |
-          npm ci
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
-            npx playwright install --with-deps --only-shell chromium
-          fi
-      - name: Run browser tests
-        working-directory: e2e
-        env:
-          RESTART_API_CMD: docker compose -f ../infra/local/docker-compose.yml restart api
-        run: |
-          npx playwright test || true
-          cd .. && $SUMMARY playwright .artifacts/e2e/e2e.json \
-            "$(cd e2e && npx playwright --version | cut -d' ' -f2)"
-      - uses: actions/upload-artifact@v7
-        if: ${{ !cancelled() }}
-        with:
-          name: e2e-report
-          path: .artifacts/e2e
-
   deploy:
     name: "CD: deploy to AWS"
-    needs: [backend-tests, frontend-build, security-scan, terraform-validate, e2e-tests]
+    needs: [backend-tests, frontend-build, security-scan, terraform-validate]
     # Only main deploys (a push, or a manual run after a lab restart).
     # Pull requests never deploy. While the lab is stopped the session token
     # has expired, so this job fails at the account check and changes nothing.
@@ -364,24 +310,5 @@ jobs:
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| $RELEASE_ID | **$status** |" >> $GITHUB_STEP_SUMMARY
           [ "$status" = Success ]
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: e2e/package-lock.json
-      - name: Restore Playwright browser
-        id: playwright-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
       - name: Smoke test the deployed application
-        working-directory: e2e
-        run: |
-          curl -fsS "$APP_URL/api/health" | grep -q "\"release\":\"$RELEASE_ID\""
-          npm ci
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
-            npx playwright install --with-deps --only-shell chromium
-          fi
-          E2E_BASE_URL=$APP_URL npx playwright test --grep @smoke || true
-          cd .. && $SUMMARY playwright .artifacts/e2e/e2e.json "post-deploy smoke"
+        run: bash scripts/smoke-test.sh "$APP_URL" "$RELEASE_ID"

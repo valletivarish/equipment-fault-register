@@ -19,3 +19,6 @@ __pycache__/
 
 # Evidence, screenshots and working notes stay local (used for the report, not shipped)
 docs/
+
+# Recorded walkthroughs stay local
+video/

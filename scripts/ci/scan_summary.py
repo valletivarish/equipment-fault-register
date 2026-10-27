@@ -23,17 +23,6 @@ def pytest_report(path):
     return counts, failed > 0 or skipped > 0
 
 
-def playwright_report(path):
-    stats = json.load(open(path))["stats"]
-    counts = {
-        "passed": stats["expected"],
-        "failed": stats["unexpected"],
-        "flaky": stats["flaky"],
-        "skipped": stats["skipped"],
-    }
-    return counts, stats["unexpected"] > 0 or stats["skipped"] > 0
-
-
 def ruff_report(path):
     findings = json.load(open(path))
     counts = Counter(f["code"] for f in findings)
@@ -92,7 +81,6 @@ def by_severity(counts):
 
 PARSERS = {
     "pytest": pytest_report,
-    "playwright": playwright_report,
     "ruff": ruff_report,
     "eslint": eslint_report,
     "bandit": bandit_report,

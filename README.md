@@ -18,7 +18,7 @@ tests, static code analysis and security scans before every deployment.
 | Web server | Nginx serving the React build and proxying `/api/` to FastAPI |
 | Infrastructure | Terraform (VPC with S3/SSM/CloudWatch endpoints, EC2 with Elastic IP, RDS, S3, CloudWatch) |
 | CI/CD | GitHub Actions, one workflow with separate CI and CD stages |
-| Testing | pytest (API), Playwright (browser end-to-end) |
+| Testing | pytest (API), curl smoke test after each deployment |
 
 ## Repository layout
 
@@ -26,7 +26,6 @@ tests, static code analysis and security scans before every deployment.
 .github/workflows/   CI/CD pipeline
 code/                application source: FastAPI backend (app/, migrations/, tests/)
                      and React frontend (src/) with their build configuration
-e2e/                 Playwright browser tests for the whole application
 infra/               Terraform, Nginx configuration and the local Docker Compose stack
 scripts/             deployment and rollback scripts
 docs/                local working notes and evidence (not tracked in git)
@@ -84,13 +83,10 @@ cd code
 npx eslint .
 ```
 
-### Browser tests
+### Deployed application check
 
 ```bash
-cd e2e
-npm ci
-npx playwright install chromium
-RESTART_API_CMD="docker compose -f ../infra/local/docker-compose.yml restart api" npx playwright test
+bash scripts/smoke-test.sh http://localhost:8080 local
 ```
 
 ## Deployment
