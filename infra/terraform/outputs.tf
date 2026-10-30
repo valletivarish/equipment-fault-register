@@ -13,3 +13,7 @@ output "release_bucket" {
 output "db_endpoint" {
   value = aws_db_instance.main.address
 }
+
+output "alerts_topic_arn" {
+  value = aws_sns_topic.alerts.arn
+}
