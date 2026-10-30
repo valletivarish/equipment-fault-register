@@ -7,7 +7,7 @@ from datetime import datetime
 
 
 def gh_api(path):
-    # Fixed gh CLI commands; the only argument is a run ID typed by the developer.
+    # The gh CLI command is constant; the only argument is a run ID typed by the developer.
     output = subprocess.run(  # noqa: S603
         ["gh", "api", path],  # noqa: S607
         check=True,
