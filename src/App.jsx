@@ -7,7 +7,7 @@ import { FaultDetail, PanelPrompt } from './FaultDetail.jsx'
 import FaultForm from './FaultForm.jsx'
 
 const DEFAULT_QUERY = { q: '', status: '', sort: 'reported_date', order: 'desc', page: 1 }
-const EMPTY_PAGE = { items: [], total: 0, open_count: 0, page: 1 }
+const EMPTY_PAGE = { items: [], total: 0, open_count: 0, urgent_count: 0, page: 1 }
 
 export default function App() {
   const [result, setResult] = useState(EMPTY_PAGE)
@@ -56,7 +56,7 @@ export default function App() {
           <p className="counts">
             {filtered
               ? `${result.total} matching ${result.total === 1 ? 'fault' : 'faults'}`
-              : `${result.open_count} open of ${result.total} recorded`}
+              : `${result.open_count} open of ${result.total} recorded · ${result.urgent_count} urgent`}
           </p>
         )}
         <Link to="/faults/new" className="button primary">Report fault</Link>

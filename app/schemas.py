@@ -56,6 +56,7 @@ class FaultPage(BaseModel):
     items: list[FaultOut]
     total: int
     open_count: int
+    urgent_count: int
     page: int
     page_size: int
 

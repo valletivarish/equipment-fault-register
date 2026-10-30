@@ -227,3 +227,10 @@ def test_days_open_counts_until_closed(client):
     body = {**VALID, "reported_date": reported, "repair_status": "Fixed"}
     closed = client.put(f"/api/faults/{fault['id']}", json=body)
     assert closed.json()["days_open"] is None
+
+
+def test_urgent_count_is_open_high_priority(client):
+    create(client, asset_tag="WS-U1", priority="High")
+    create(client, asset_tag="WS-U2", priority="High", repair_status="Fixed")
+    create(client, asset_tag="WS-U3", priority="Low")
+    assert client.get("/api/faults").json()["urgent_count"] == 1

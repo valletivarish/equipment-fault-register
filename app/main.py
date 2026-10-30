@@ -89,10 +89,20 @@ def list_faults(
         .select_from(EquipmentFault)
         .where(*filters, EquipmentFault.repair_status.not_in(CLOSED_STATUSES))
     )
+    urgent_count = session.scalar(
+        select(func.count())
+        .select_from(EquipmentFault)
+        .where(
+            *filters,
+            EquipmentFault.repair_status.not_in(CLOSED_STATUSES),
+            EquipmentFault.priority == "High",
+        )
+    )
     return {
         "items": items,
         "total": total,
         "open_count": open_count,
+        "urgent_count": urgent_count,
         "page": page,
         "page_size": page_size,
     }
