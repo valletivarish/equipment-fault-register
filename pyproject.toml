@@ -1,5 +1,5 @@
 [tool.ruff]
-cache-dir = "../.artifacts/ruff-cache"
+cache-dir = ".artifacts/ruff-cache"
 line-length = 100
 target-version = "py312"
 extend-exclude = ["node_modules", "dist"]
@@ -14,5 +14,5 @@ ignore = ["B008"]  # FastAPI's Depends() in defaults is the framework's intended
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# No .pytest_cache folder inside code/.
+# No .pytest_cache folder in the repository.
 addopts = "-p no:cacheprovider"

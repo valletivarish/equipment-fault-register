@@ -56,25 +56,22 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: code/requirements-dev.txt
+          cache-dependency-path: requirements-dev.txt
       - name: Install dependencies
-        run: pip install -r code/requirements-dev.txt defusedxml==0.7.1
+        run: pip install -r requirements-dev.txt defusedxml==0.7.1
       - name: Static analysis (Ruff)
-        working-directory: code
         run: |
-          ruff check . --output-format=json > ../ruff.json || true
+          ruff check . --output-format=json > ruff.json || true
           ruff check . --output-format=concise || true
-          cd .. && $SUMMARY ruff ruff.json "$(ruff --version | cut -d' ' -f2)"
+          $SUMMARY ruff ruff.json "$(ruff --version | cut -d' ' -f2)"
       - name: Migrations apply cleanly
         if: ${{ !cancelled() }}
-        working-directory: code
         run: alembic upgrade head && alembic downgrade base
       - name: API tests (pytest)
         if: ${{ !cancelled() }}
-        working-directory: code
         run: |
-          pytest -v --junitxml=../pytest.xml || true
-          cd .. && $SUMMARY pytest pytest.xml "$(pytest --version | cut -d' ' -f2)"
+          pytest -v --junitxml=pytest.xml || true
+          $SUMMARY pytest pytest.xml "$(pytest --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -93,18 +90,15 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: code/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install dependencies
-        working-directory: code
         run: npm ci
       - name: Static analysis (ESLint)
-        working-directory: code
         run: |
-          npx eslint . -f json -o ../eslint.json || true
+          npx eslint . -f json -o eslint.json || true
           npx eslint . || true
-          cd .. && $SUMMARY eslint eslint.json "$(cd code && npx eslint --version)"
+          $SUMMARY eslint eslint.json "$(npx eslint --version)"
       - name: Production build
-        working-directory: code
         run: npm run build
       - uses: actions/upload-artifact@v7
         with:
@@ -168,26 +162,26 @@ jobs:
       - name: Python code security (Bandit)
         if: ${{ !cancelled() }}
         run: |
-          bandit -r code/app -f json -o bandit.json || true
-          bandit -r code/app -f screen || true
+          bandit -r app -f json -o bandit.json || true
+          bandit -r app -f screen || true
           $SUMMARY bandit bandit.json "1.9.4"
       - name: Python dependencies (pip-audit)
         if: ${{ !cancelled() }}
         run: |
-          pip-audit -r code/requirements.txt -f json -o pip-audit.json || true
-          pip-audit -r code/requirements.txt || true
+          pip-audit -r requirements.txt -f json -o pip-audit.json || true
+          pip-audit -r requirements.txt || true
           $SUMMARY pip-audit pip-audit.json "2.10.1"
       - name: npm dependencies (npm audit)
         if: ${{ !cancelled() }}
         run: |
-          (cd code && npm audit --package-lock-only --json > ../npm-audit.json) || true
-          (cd code && npm audit --package-lock-only) || true
+          npm audit --package-lock-only --json > npm-audit.json || true
+          npm audit --package-lock-only || true
           $SUMMARY npm-audit npm-audit.json "$(npm --version)"
       - name: Code security patterns (Semgrep)
         if: ${{ !cancelled() }}
         run: |
-          semgrep scan --metrics=off --config p/default --json -o semgrep.json code scripts || true
-          semgrep scan --metrics=off --config p/default code scripts || true
+          semgrep scan --metrics=off --config p/default --json -o semgrep.json app src migrations scripts || true
+          semgrep scan --metrics=off --config p/default app src migrations scripts || true
           $SUMMARY semgrep semgrep.json "$SEMGREP_VERSION"
       - name: Infrastructure misconfiguration (Trivy)
         if: ${{ !cancelled() }}
@@ -278,11 +272,11 @@ jobs:
           RELEASE_ID=${GITHUB_SHA::12}
           echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
           mkdir -p bundle/backend bundle/infra
-          cp -r code/app code/migrations code/alembic.ini code/requirements.txt bundle/backend/
+          cp -r app migrations alembic.ini requirements.txt bundle/backend/
           # EC2 has no internet access, so the exact wheels for its Python 3.12
           # (x86_64 Linux) travel inside the release bundle.
           pip download --quiet --only-binary=:all: --platform manylinux2014_x86_64 \
-            --python-version 3.12 --implementation cp -r code/requirements.txt -d bundle/wheels
+            --python-version 3.12 --implementation cp -r requirements.txt -d bundle/wheels
           cp -r .artifacts/dist bundle/dist
           cp -r scripts bundle/scripts
           cp -r infra/nginx infra/systemd bundle/infra/

@@ -24,11 +24,11 @@ tests, static code analysis and security scans before every deployment.
 
 ```text
 .github/workflows/   CI/CD pipeline
-code/                application source: FastAPI backend (app/, migrations/, tests/)
-                     and React frontend (src/) with their build configuration
+app/, migrations/    FastAPI backend and its Alembic migrations
+tests/               API tests (pytest)
+src/                 React frontend
 infra/               Terraform, Nginx configuration and the local Docker Compose stack
 scripts/             deployment and rollback scripts
-docs/                local working notes and evidence (not tracked in git)
 ```
 
 ## Data model
@@ -60,14 +60,13 @@ database enforces the allowed statuses and the link between notes and faults.
 Requirements: Docker, Node.js 22, Python 3.12.
 
 ```bash
-cd code
 npm ci
 npm run build
-docker compose -f ../infra/local/docker-compose.yml up -d --build
+docker compose -f infra/local/docker-compose.yml up -d --build
 ```
 
 The application is then available at http://localhost:8080. For frontend development with hot
-reload, run the API with `uvicorn app.main:app --port 8000` from `code/` and start `npm run dev`.
+reload, run the API with `uvicorn app.main:app --port 8000` and start `npm run dev`.
 
 ## Tests and checks
 
@@ -76,10 +75,9 @@ reload, run the API with `uvicorn app.main:app --port 8000` from `code/` and sta
 ```bash
 docker run -d --rm --name efr-testdb -e POSTGRES_USER=faults -e POSTGRES_PASSWORD=faults \
   -e POSTGRES_DB=faults -p 55432:5432 postgres:16-alpine
-python3.12 -m venv .venv && .venv/bin/pip install -r code/requirements-dev.txt
-cd code
-../.venv/bin/pytest
-../.venv/bin/ruff check .
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pytest
+.venv/bin/ruff check .
 npx eslint .
 ```
 

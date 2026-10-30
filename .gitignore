@@ -22,3 +22,6 @@ docs/
 
 # Recorded walkthroughs stay local
 video/
+
+# Editor settings stay on the developer machine
+.vscode/

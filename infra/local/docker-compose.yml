@@ -18,8 +18,8 @@ services:
 
   api:
     build:
-      context: ../../code
-      dockerfile: ../infra/local/api.Dockerfile
+      context: ../..
+      dockerfile: infra/local/api.Dockerfile
     environment:
       DATABASE_URL: postgresql+psycopg://faults:faults@db:5432/faults
       RELEASE_ID: ${RELEASE_ID:-local}

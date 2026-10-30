@@ -1,0 +1,9 @@
+node_modules
+.artifacts
+.venv
+.git
+.github
+docs
+report
+video
+infra/terraform
