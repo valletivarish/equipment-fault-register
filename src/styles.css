@@ -81,19 +81,17 @@ a { color: inherit; }
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--muted);
-  padding: 0.7rem 0.75rem;
+  padding: 0.7rem 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--page);
-  white-space: nowrap;
 }
 .faults td {
-  padding: 0.7rem 0.75rem;
+  padding: 0.7rem 1rem;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 .faults tbody tr:last-child td { border-bottom: 0; }
 .faults td:nth-child(2) { white-space: normal; }
-.faults td.days { text-align: right; color: var(--muted); }
 .faults tbody tr { cursor: pointer; }
 .faults tbody tr:hover { background: var(--page); }
 .faults tbody tr.selected { background: var(--blue-soft); }
