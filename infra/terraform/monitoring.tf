@@ -1,6 +1,15 @@
 # AppHealthy is pushed every minute by the health timer on EC2 (1 = /api/health
 # returned ok, 0 = it did not). CPU comes from the free 5-minute EC2 and RDS
 # metrics; detailed 1-minute monitoring is not enabled to avoid extra cost.
+# Alarm notifications. The e-mail subscription is added once with the CLI
+# (aws sns subscribe), so no personal address is kept in this repository.
+# Alarm messages carry no secrets; the AWS managed key avoids a monthly key charge.
+#trivy:ignore:AWS-0136
+resource "aws_sns_topic" "alerts" {
+  name              = "fault-register-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
 resource "aws_cloudwatch_metric_alarm" "app_unhealthy" {
   alarm_name          = "fault-register-app-unhealthy"
   alarm_description   = "Health check on EC2 failed for 3 consecutive minutes"
@@ -12,6 +21,8 @@ resource "aws_cloudwatch_metric_alarm" "app_unhealthy" {
   comparison_operator = "LessThanThreshold"
   threshold           = 1
   treat_missing_data  = "breaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
 }
 
 resource "aws_cloudwatch_metric_alarm" "web_cpu_high" {
@@ -25,6 +36,8 @@ resource "aws_cloudwatch_metric_alarm" "web_cpu_high" {
   evaluation_periods  = 2
   comparison_operator = "GreaterThanThreshold"
   threshold           = 80
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
 }
 
 resource "aws_cloudwatch_dashboard" "main" {

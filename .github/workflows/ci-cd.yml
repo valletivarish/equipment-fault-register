@@ -14,6 +14,11 @@ on:
   pull_request:
     paths-ignore: ["docs/**", "report/**", "video/**", "**/*.md"]
   workflow_dispatch:
+    inputs:
+      release_id:
+        description: "Deploy this release bundle already in S3 instead of packaging the commit (empty = normal run)"
+        required: false
+        default: ""
 
 # A newer commit on the same pull request makes the older run redundant.
 # Runs on main are never cancelled so a deployment is not cut off half way.
@@ -267,7 +272,21 @@ jobs:
         with:
           name: frontend-dist
           path: .artifacts/dist
+      # A manual run can redeploy a bundle that is already in S3, for example
+      # to roll forward or to rehearse a failed release through CD.
+      - name: Use an existing release bundle from S3
+        if: inputs.release_id != ''
+        env:
+          INPUT_RELEASE: ${{ inputs.release_id }}
+        run: |
+          if ! [[ "$INPUT_RELEASE" =~ ^[A-Za-z0-9._-]{1,64}$ ]]; then
+            echo "release_id may only contain letters, digits, dot, dash and underscore"
+            exit 1
+          fi
+          aws s3api head-object --bucket "$BUCKET" --key "releases/$INPUT_RELEASE.tar.gz" >/dev/null
+          echo "RELEASE_ID=$INPUT_RELEASE" >> $GITHUB_ENV
       - name: Package release
+        if: inputs.release_id == ''
         run: |
           RELEASE_ID=${GITHUB_SHA::12}
           echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
