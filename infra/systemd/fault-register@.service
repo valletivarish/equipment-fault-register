@@ -1,0 +1,22 @@
+[Unit]
+Description=Equipment fault register API (FastAPI), slot on port %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=faultreg
+# Each slot runs the release its slot-<port> link points to, so a new release
+# can start and pass its health check while the other slot still serves users.
+WorkingDirectory=/opt/fault-register/slot-%i/backend
+EnvironmentFile=/etc/fault-register.env
+EnvironmentFile=/opt/fault-register/slot-%i/release.env
+# One worker is enough for this workload on a t3.micro and keeps memory low.
+ExecStart=/opt/fault-register/slot-%i/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port %i --workers 1
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
