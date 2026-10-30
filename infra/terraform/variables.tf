@@ -1,5 +1,6 @@
-# us-west-2 (Oregon) is chosen over us-east-1, the other region the Learner Lab
-# allows, because its grid has a much lower carbon intensity.
+# us-west-2 (Oregon) instead of us-east-1, the other region the Learner Lab allows.
+# Annual eGRID 2023 averages for the two grids are close (Virginia slightly lower),
+# so this choice does not reduce carbon on its own.
 variable "region" {
   description = "AWS region for every resource"
   type        = string
