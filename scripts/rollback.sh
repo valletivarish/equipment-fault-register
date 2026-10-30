@@ -14,5 +14,4 @@ fi
 [ -d "$APP_DIR/releases/$TARGET" ] || { echo "Release $TARGET not found"; exit 1; }
 
 echo "== Rolling back from $CURRENT to $TARGET"
-activate_release "$APP_DIR/releases/$TARGET"
-wait_until_healthy "$TARGET" && echo "== $TARGET is healthy"
+release_to "$APP_DIR/releases/$TARGET" "$TARGET" && echo "== $TARGET is healthy"

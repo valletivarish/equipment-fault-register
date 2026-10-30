@@ -1,8 +1,8 @@
 #!/bin/bash
 # Runs on EC2 through SSM Run Command, from inside the unpacked release bundle:
 #   deploy.sh <release-id>
-# Installs the release beside the running one, migrates the database, switches
-# over and restores the previous release automatically if the health check fails.
+# Migrates the database, starts the release in the idle slot and moves Nginx to
+# it only after its health check passes; otherwise the live release keeps serving.
 set -euo pipefail
 source "$(dirname "$0")/release-lib.sh"
 
@@ -59,19 +59,11 @@ echo "== Database migrations"
 (cd "$NEW/backend" && set -a && source /etc/fault-register.env && set +a \
   && "$NEW/venv/bin/alembic" upgrade head)
 
-echo "== Switch to $RELEASE_ID"
-activate_release "$NEW"
-
-if wait_until_healthy "$RELEASE_ID"; then
+if release_to "$NEW" "$RELEASE_ID"; then
   echo "== Release $RELEASE_ID is healthy"
   echo "$RELEASE_ID" >> "$APP_DIR/healthy-releases"
 else
-  echo "== Health check failed for $RELEASE_ID"
-  if [ -n "$PREVIOUS" ] && [ "$PREVIOUS" != "$NEW" ]; then
-    echo "== Rolling back to $(basename "$PREVIOUS")"
-    activate_release "$PREVIOUS"
-    wait_until_healthy "$(basename "$PREVIOUS")" && echo "== Previous release restored"
-  fi
+  echo "== Previous release $(basename "$PREVIOUS") is still serving"
   exit 1
 fi
 
