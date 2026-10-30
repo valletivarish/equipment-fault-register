@@ -1,6 +1,7 @@
 # One pipeline for the whole application.
-# CI (every push and pull request): backend tests, frontend build, static and
-# security analysis and Terraform validation.
+# CI (pushes to main and pull requests): backend tests, frontend build, static
+# and security analysis and Terraform validation, each run only when its part
+# changed; the security analysis always runs.
 # CD (push to main only, after every CI job passes): Terraform apply, release
 # upload to S3, install on EC2 through SSM and a smoke test on the public URL.
 name: CI/CD
@@ -39,8 +40,51 @@ env:
   SUMMARY: python3 scripts/ci/scan_summary.py
 
 jobs:
+  # Lists the files changed by the push or pull request, so each test job runs
+  # only when its own part changed. The security scan always runs, because a
+  # new advisory can affect code that did not change.
+  changes:
+    name: "CI: detect changed parts"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.parts.outputs.backend }}
+      frontend: ${{ steps.parts.outputs.frontend }}
+      infra: ${{ steps.parts.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: parts
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # A manual run, a new branch or a missing base checks every part.
+          if [ "$EVENT" = pull_request ]; then from=$BASE; else from=$BEFORE; fi
+          if [ "$EVENT" = workflow_dispatch ] || ! git cat-file -e "$from^{commit}" 2>/dev/null; then
+            files=ALL
+          else
+            files=$(git diff --name-only "$from" HEAD)
+          fi
+          echo "$files"
+          # The workflow and the CI scripts belong to every part.
+          part() {
+            [ "$files" = ALL ] || echo "$files" | grep -qE "^(\.github/|scripts/ci/)|$1"
+          }
+          part '^(app/|migrations/|tests/|requirements|pyproject\.toml|alembic\.ini)' && b=true || b=false
+          part '^(src/|index\.html|package|vite\.config|eslint\.config)' && f=true || f=false
+          part '^(infra/|scripts/)' && i=true || i=false
+          printf 'backend=%s\nfrontend=%s\ninfra=%s\n' $b $f $i >> "$GITHUB_OUTPUT"
+          echo "| Part | Runs |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          printf '| backend tests | %s |\n| frontend build | %s |\n| Terraform validate | %s |\n' $b $f $i >> $GITHUB_STEP_SUMMARY
+
   backend-tests:
     name: "CI: backend lint and tests"
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -87,6 +131,9 @@ jobs:
 
   frontend-build:
     name: "CI: frontend lint and build"
+    needs: changes
+    # Main always builds: the release bundle needs the compiled frontend.
+    if: needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -207,6 +254,8 @@ jobs:
 
   terraform-validate:
     name: "CI: Terraform validate"
+    needs: changes
+    if: needs.changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -230,7 +279,11 @@ jobs:
     # Only main deploys (a push, or a manual run after a lab restart).
     # Pull requests never deploy. While the lab is stopped the session token
     # has expired, so this job fails at the account check and changes nothing.
+    # A CI job skipped because its part did not change counts as passed.
     if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      needs.frontend-build.result == 'success' &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
