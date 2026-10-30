@@ -3,11 +3,11 @@
 # metrics; detailed 1-minute monitoring is not enabled to avoid extra cost.
 # Alarm notifications. The e-mail subscription is added once with the CLI
 # (aws sns subscribe), so no personal address is kept in this repository.
-# Alarm messages carry no secrets; the AWS managed key avoids a monthly key charge.
-#trivy:ignore:AWS-0136
+# Not encrypted with the AWS managed SNS key: CloudWatch alarms cannot publish
+# to a topic that uses it, and the messages carry only alarm names and states.
+#trivy:ignore:AWS-0095
 resource "aws_sns_topic" "alerts" {
-  name              = "fault-register-alerts"
-  kms_master_key_id = "alias/aws/sns"
+  name = "fault-register-alerts"
 }
 
 resource "aws_cloudwatch_metric_alarm" "app_unhealthy" {
