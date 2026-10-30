@@ -218,3 +218,12 @@ def test_sort_by_priority_uses_urgency(client):
     params = {"sort": "priority", "order": "desc"}
     names = [f["priority"] for f in client.get("/api/faults", params=params).json()["items"]]
     assert names == ["High", "Medium", "Low"]
+
+
+def test_days_open_counts_until_closed(client):
+    reported = (date.today() - timedelta(days=12)).isoformat()
+    fault = create(client, reported_date=reported)
+    assert fault["days_open"] == 12
+    body = {**VALID, "reported_date": reported, "repair_status": "Fixed"}
+    closed = client.put(f"/api/faults/{fault['id']}", json=body)
+    assert closed.json()["days_open"] is None

@@ -64,6 +64,7 @@ export default function FaultTable({
                 </th>
               )
             })}
+            <th scope="col">Days open</th>
           </tr>
         </thead>
         <tbody>
@@ -85,6 +86,7 @@ export default function FaultTable({
                 <td className="date">{formatDate(fault.reported_date, true)}</td>
                 <td className={`priority-${fault.priority.toLowerCase()}`}>{fault.priority}</td>
                 <td><StatusMark status={fault.repair_status} /></td>
+                <td className="days">{fault.days_open ?? '–'}</td>
               </tr>
             )
           })}

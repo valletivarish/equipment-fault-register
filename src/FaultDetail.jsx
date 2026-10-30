@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from './api.js'
 import RepairLog from './RepairLog.jsx'
-import StatusMark, { formatDate } from './StatusMark.jsx'
+import StatusMark, { daysLabel, formatDate } from './StatusMark.jsx'
 
 export function PanelPrompt({ hasFaults }) {
   return (
@@ -72,6 +72,8 @@ export function FaultDetail({ onDeleted }) {
         <dd>{fault.location}</dd>
         <dt>Reported</dt>
         <dd className="date">{formatDate(fault.reported_date)}</dd>
+        <dt>Open for</dt>
+        <dd>{daysLabel(fault.days_open)}</dd>
       </dl>
 
       <h3>Fault</h3>
