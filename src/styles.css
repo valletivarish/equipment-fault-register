@@ -55,8 +55,8 @@ a { color: inherit; }
   cursor: pointer;
 }
 .button:hover { background: var(--page); }
-.button.primary { background: #0f766e; border-color: #0f766e; color: #fff; }
-.button.primary:hover { background: #115e59; }
+.button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.button.primary:hover { background: var(--blue-dark); }
 .button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 .button:disabled { opacity: 0.6; cursor: wait; }
 
